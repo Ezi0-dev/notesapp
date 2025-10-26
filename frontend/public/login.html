@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Secure Notes</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div class="auth-box">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>🔐 Secure Notes</h1>
+      </div>
+
+      <!-- Success Message (hidden by default) -->
+      <div id="successMessage" class="message success-message" style="display: none;"></div>
+      
+      <!-- Error Message (hidden by default) -->
+      <div id="errorMessage" class="message error-message" style="display: none;"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            required 
+            autocomplete="username"
+            placeholder="Enter your username"
+            minlength="3"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            required 
+            autocomplete="current-password"
+            placeholder="Enter your password"
+          >
+        </div>
+
+        <button type="submit" id="loginBtn" class="btn btn-primary">
+          Login
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="/register.html">Register here</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTANT: Load scripts in this exact order -->
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/auth.js"></script>
+</body>
+</html>

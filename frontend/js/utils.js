@@ -1,0 +1,253 @@
+// Show success message
+function showSuccess(elementId, message) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.textContent = message;
+    element.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      hideMessage(elementId);
+    }, 5000);
+  }
+}
+
+// Show error message
+function showError(elementId, message) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.textContent = message;
+    element.style.display = 'block';
+  }
+}
+
+// Hide message
+function hideMessage(elementId) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.style.display = 'none';
+    element.textContent = '';
+  }
+}
+
+// Check if user is authenticated
+function isAuthenticated() {
+  const token = localStorage.getItem('accessToken');
+  const user = localStorage.getItem('user');
+  return !!(token && user);
+}
+
+// Redirect to login if not authenticated
+function redirectIfNotAuthenticated() {
+  if (!isAuthenticated()) {
+        setTimeout(() => {
+      window.location.href = '/login.html';
+    }, 5000);
+  }
+}
+
+// Redirect to dashboard if already authenticated
+function redirectIfAuthenticated() {
+  if (isAuthenticated()) {
+    window.location.href = '/dashboard.html';
+  }
+}
+
+// Update password strength indicator
+function checkPasswordStrength(password) {
+  let strength = 0;
+  if (password.length >= 8) strength++;
+  if (password.length >= 12) strength++;
+  if (/[a-z]/.test(password)) strength++;
+  if (/[A-Z]/.test(password)) strength++;
+  if (/[0-9]/.test(password)) strength++;
+  if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+  return strength;
+}
+
+function updatePasswordStrength(password, elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+
+  const strength = checkPasswordStrength(password);
+  const strengthText = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+  const strengthClass = ['very-weak', 'weak', 'fair', 'good', 'strong', 'very-strong'];
+
+  element.className = 'password-strength ' + strengthClass[strength];
+  element.textContent = strengthText[strength];
+  element.style.display = 'block';
+}
+
+// Validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Debounce function for search/filter
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Copy text to clipboard
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    return false;
+  }
+}
+
+// Get relative time (e.g., "2 hours ago")
+function getRelativeTime(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  const intervals = {
+    year: 31536000,
+    month: 2592000,
+    week: 604800,
+    day: 86400,
+    hour: 3600,
+    minute: 60,
+    second: 1
+  };
+  
+  for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+    const interval = Math.floor(seconds / secondsInUnit);
+    if (interval >= 1) {
+      return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
+    }
+  }
+  
+  return 'just now';
+}
+
+// Truncate text
+function truncate(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+// Generate random ID
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Check if dark mode is enabled
+function isDarkMode() {
+  return document.body.classList.contains('dark-mode') || 
+         window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+// Toggle dark mode
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Custom Confirm Modal
+function showConfirm(options) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const icon = document.getElementById('confirmIcon');
+    const title = document.getElementById('confirmTitle');
+    const message = document.getElementById('confirmMessage');
+    const cancelBtn = document.getElementById('confirmCancel');
+    const okBtn = document.getElementById('confirmOk');
+
+    // Set content
+    icon.textContent = options.icon || '⚠️';
+    icon.className = `confirm-icon ${options.type || 'warning'}`;
+    title.textContent = options.title || 'Confirm Action';
+    message.textContent = options.message || 'Are you sure?';
+    okBtn.textContent = options.confirmText || 'Confirm';
+    okBtn.className = `btn btn-confirm ${options.type === 'danger' ? 'danger' : ''}`;
+    cancelBtn.textContent = options.cancelText || 'Cancel';
+
+    // Show modal
+    modal.classList.add('show');
+
+    // Handle buttons
+    const handleConfirm = () => {
+      modal.classList.remove('show');
+      cleanup();
+      resolve(true);
+    };
+
+    const handleCancel = () => {
+      modal.classList.remove('show');
+      cleanup();
+      resolve(false);
+    };
+
+    const cleanup = () => {
+      okBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      modal.removeEventListener('click', handleOutsideClick);
+    };
+
+    const handleOutsideClick = (e) => {
+      if (e.target === modal) {
+        handleCancel();
+      }
+    };
+
+    okBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    modal.addEventListener('click', handleOutsideClick);
+  });
+}
+
+// Toast Notification
+function showToast(options) {
+  const toast = document.getElementById('toast');
+  const icon = toast.querySelector('.toast-icon');
+  const title = document.getElementById('toastTitle');
+  const message = document.getElementById('toastMessage');
+
+  // Set content
+  icon.textContent = options.icon || '✓';
+  title.textContent = options.title || 'Success';
+  message.textContent = options.message || 'Action completed';
+  toast.className = `toast ${options.type || 'success'} show`;
+
+  // Auto hide after 3 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, options.duration || 3000);
+}

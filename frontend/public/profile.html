@@ -1,0 +1,218 @@
+<!-- frontend/public/profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Settings - Secure Notes</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/profile.css">
+</head>
+<body>
+    <div class="profile-container">
+        <!-- Sidebar Navigation -->
+        <nav class="profile-sidebar">
+            <div class="sidebar-header">
+                <h2>⚙️ Settings</h2>
+            </div>
+            
+            <div class="profile-nav">
+                <button class="nav-item active" data-section="profile">
+                    <span class="nav-icon">👤</span>
+                    <span>Profile</span>
+                </button>
+                <button class="nav-item" data-section="security">
+                    <span class="nav-icon">🔒</span>
+                    <span>Security</span>
+                </button>
+                <button class="nav-item" data-section="danger">
+                    <span class="nav-icon">⚠️</span>
+                    <span>Danger Zone</span>
+                </button>
+            </div>
+
+            <div class="sidebar-footer">
+                <a href="/dashboard.html" class="btn btn-secondary btn-full">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="profile-main">
+            <!-- Profile Picture Section -->
+            <section id="profile-section" class="settings-section active">
+                <div class="section-header">
+                    <h1>Profile Settings</h1>
+                    <p class="section-description">Manage your personal information and profile picture</p>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Profile Picture</h3>
+                    <div class="profile-picture-section">
+                        <div class="profile-picture-preview">
+                            <div class="avatar-container">
+                                <img id="profilePicture" src="" alt="Profile" class="avatar-image">
+                                <div class="avatar-placeholder" id="avatarPlaceholder">
+                                    <span id="avatarInitials">??</span>
+                                </div>
+                            </div>
+                            <div class="avatar-info">
+                                <h4 id="profileUsername">Username</h4>
+                                <p id="profileEmail">email@example.com</p>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-picture-actions">
+                            <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" style="display: none;">
+                            <button class="btn btn-primary" id="uploadAvatarBtn">
+                                📷 Upload New Picture
+                            </button>
+                            <button class="btn btn-secondary" id="removeAvatarBtn">
+                                🗑️ Remove Picture
+                            </button>
+                            <p class="helper-text">JPG, PNG, GIF or WebP. Max size 2MB.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Account Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Username</label>
+                            <p id="infoUsername">Loading...</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Email</label>
+                            <p id="infoEmail">Loading...</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Member Since</label>
+                            <p id="infoCreatedAt">Loading...</p>
+                        </div>
+                        <div class="info-item">
+                            <label>Last Login</label>
+                            <p id="infoLastLogin">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Security Section -->
+            <section id="security-section" class="settings-section">
+                <div class="section-header">
+                    <h1>Security Settings</h1>
+                    <p class="section-description">Keep your account secure by updating your password regularly</p>
+                </div>
+
+                <div class="settings-card">
+                    <h3>Change Password</h3>
+                    <form id="changePasswordForm">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <input type="password" id="currentPassword" required 
+                                   placeholder="Enter your current password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" required 
+                                   minlength="8"
+                                   placeholder="Enter new password">
+                            <small>Min 8 characters with uppercase, lowercase, and number</small>
+                            <div id="newPasswordStrength" class="password-strength"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmNewPassword">Confirm New Password</label>
+                            <input type="password" id="confirmNewPassword" required 
+                                   placeholder="Confirm new password">
+                        </div>
+
+                        <div id="passwordError" class="error-message"></div>
+                        <div id="passwordSuccess" class="success-message"></div>
+
+                        <button type="submit" class="btn btn-primary" id="changePasswordBtn">
+                            🔒 Update Password
+                        </button>
+                    </form>
+                </div>
+
+                <div class="settings-card info-card">
+                    <div class="info-icon">💡</div>
+                    <div>
+                        <h4>Security Tips</h4>
+                        <ul>
+                            <li>Use a unique password you don't use elsewhere</li>
+                            <li>Enable two-factor authentication (coming soon)</li>
+                            <li>Never share your password with anyone</li>
+                            <li>Change your password if you suspect unauthorized access</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Danger Zone Section -->
+            <section id="danger-section" class="settings-section">
+                <div class="section-header">
+                    <h1>Danger Zone</h1>
+                    <p class="section-description">Irreversible actions that will permanently affect your account</p>
+                </div>
+
+                <div class="settings-card danger-card">
+                    <div class="danger-header">
+                        <div>
+                            <h3>🗑️ Delete Account</h3>
+                            <p>Permanently delete your account and all associated data</p>
+                        </div>
+                        <button class="btn btn-danger" id="deleteAccountBtn">
+                            Delete Account
+                        </button>
+                    </div>
+                    
+                    <div class="danger-info">
+                        <h4>⚠️ This action will:</h4>
+                        <ul>
+                            <li>Permanently delete all your notes</li>
+                            <li>Remove your profile and account data</li>
+                            <li>Revoke all active sessions</li>
+                            <li>Cannot be undone or recovered</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal (reuse from dashboard) -->
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-content">
+            <div class="confirm-header">
+                <span id="confirmIcon" class="confirm-icon">⚠️</span>
+                <h3 id="confirmTitle">Confirm Action</h3>
+            </div>
+            <div class="confirm-body">
+                <p id="confirmMessage">Are you sure you want to proceed?</p>
+            </div>
+            <div class="confirm-actions">
+                <button class="btn btn-cancel" id="confirmCancel">Cancel</button>
+                <button class="btn btn-confirm" id="confirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span class="toast-icon">✓</span>
+        <div class="toast-content">
+            <div class="toast-title" id="toastTitle">Success</div>
+            <div class="toast-message" id="toastMessage">Action completed</div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/profile.js"></script>
+</body>
+</html>

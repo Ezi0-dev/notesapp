@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Secure Notes</title>
+  <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <h1>🔐 Secure Notes</h1>
+      </div>
+      <div class="navbar-menu">
+        <div class="profile-actions">
+          <a href="/profile.html" class="profile-button">
+              <div class="profile-button-avatar" id="dashboardAvatar"></div>
+              <div class="profile-button-info">
+                  <span class="profile-button-name" id="dashboardUsername">Loading...</span>
+                  <span class="profile-button-link">⚙️ Edit Profile</span>
+              </div>
+          </a>
+
+          <button class="btn btn-logout" id="logoutBtn">
+              <span class="logout-icon">👋</span>
+              <span class="logout-text">Logout</span>
+          </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Dashboard Content -->
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <button id="newNoteBtn" class="btn btn-primary btn-block">
+        ➕ New Note
+      </button>
+      
+      <div class="search-box">
+        <h3>Search</h3>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Search notes..."
+        >
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Statistics</h3>
+        <div class="stat-item">
+          <span class="stat-label">Total Notes:</span>
+          <span class="stat-value" id="totalNotes">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Encrypted:</span>
+          <span class="stat-value" id="encryptedNotes">0</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Success/Error Messages -->
+      <div id="successMessage" class="message success-message" style="display: none;"></div>
+      <div id="noteError" class="message error-message" style="display: none;"></div>
+
+      <!-- Loading State -->
+      <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading notes...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">📝</div>
+        <h3>No notes yet</h3>
+        <p>Create your first secure note by clicking the "New Note" button</p>
+      </div>
+
+      <!-- Notes Grid -->
+      <div id="notesContainer" class="notes-grid">
+        <!-- Notes will be inserted here by JavaScript -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Note Modal -->
+  <div id="noteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Note</h2>
+        <button id="closeModal" class="modal-close">&times;</button>
+      </div>
+
+      <form id="noteForm" class="note-form">
+        <div class="form-group">
+          <label for="noteTitle">Title</label>
+          <input 
+            type="text" 
+            id="noteTitle" 
+            class="form-input" 
+            placeholder="Enter note title"
+            required
+            maxlength="255"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="noteContent">Content</label>
+          <textarea 
+            id="noteContent" 
+            class="form-textarea" 
+            placeholder="Start typing your note..."
+            rows="12"
+            required
+            maxlength="50000"
+          ></textarea>
+        </div>
+
+        <div class="form-group" id="encryptionContainer">
+          <label class="checkbox-label" style="display: flex;">
+            <input type="checkbox" id="noteEncrypted" checked>
+            <span>🔒 Encrypt this note (recommended)</span>
+          </label>
+        </div>
+
+        <div class="modal-actions" id="modalContainer">
+          <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="saveNoteBtn" class="btn btn-primary">Save Note</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- IMPORTANT: Load scripts in this exact order -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js"></script>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>
+
+    <!-- Confirmation Modal -->
+<div id="confirmModal" class="confirm-modal">
+    <div class="confirm-content">
+        <div class="confirm-header">
+            <span id="confirmIcon" class="confirm-icon">⚠️</span>
+            <h3 id="confirmTitle">Confirm Action</h3>
+        </div>
+        <div class="confirm-body">
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+        </div>
+        <div class="confirm-actions">
+            <button class="btn btn-cancel" id="confirmCancel">Cancel</button>
+            <button class="btn btn-confirm" id="confirmOk">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">
+    <span class="toast-icon">✓</span>
+    <div class="toast-content">
+        <div class="toast-title" id="toastTitle">Success</div>
+        <div class="toast-message" id="toastMessage">Action completed</div>
+    </div>
+</div>
+
