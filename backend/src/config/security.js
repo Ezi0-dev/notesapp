@@ -9,12 +9,12 @@ module.exports = {
     saltRounds: 12,
   },
   rateLimit: {
-    windowMs: 15 * 60 * 1000,
+    windowMs: 5 * 60 * 1000,
     maxAuth: 5,
     maxApi: 100,
   },
   lockout: {
     maxAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
-    lockoutTime: parseInt(process.env.LOCKOUT_TIME) || 15 * 60 * 1000,
+    lockoutTime: parseInt(process.env.LOCKOUT_TIME) || 5 * 60 * 1000,
   }
 };
