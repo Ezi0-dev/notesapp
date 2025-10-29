@@ -11,8 +11,9 @@ const { logger, stream } = require('./utils/logger');
 const { securityMiddleware } = require('./middleware/security');
 const authRoutes = require('./routes/auth');
 const notesRoutes = require('./routes/notes');
+const friendsRoutes = require('./routes/friends');
+const sharingRoutes = require('./routes/sharing');
 const { pool } = require('./config/database');
-require('./utils/cleanup');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +72,10 @@ app.use(securityMiddleware);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
+
+// Freind sharing stuff
+app.use('/api/friends', friendsRoutes);
+app.use('/api/sharing', sharingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
