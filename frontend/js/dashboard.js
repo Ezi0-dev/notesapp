@@ -83,7 +83,7 @@ function displayNotes(notesToDisplay) {
   container.style.display = 'grid';
   
   container.innerHTML = notesToDisplay.map(note => `
-    <div class="note-card" data-id="${note.id}" onclick="viewNote(${note.id})">
+    <div class="note-card" data-id="${note.id}" onclick="viewNote('${note.id}')">
       <div class="note-header">
         <h3 class="note-title">${escapeHtml(note.title)}</h3>
         ${note.encrypted ? '<span class="note-badge">🔒 Encrypted</span>' : ''}
@@ -93,8 +93,8 @@ function displayNotes(notesToDisplay) {
         <span class="note-date">${formatDate(note.updated_at)}</span>
       </div>
       <div class="note-actions" onclick="event.stopPropagation()">
-        <button class="btn-icon" onclick="editNote(${note.id})" title="Edit Note">✏️</button>
-        <button class="btn-icon btn-delete" onclick="deleteNote(${note.id})" title="Delete Note">🗑️</button>
+        <button class="btn-icon" onclick="editNote('${note.id}')" title="Edit Note">✏️</button>
+        <button class="btn-icon btn-delete" onclick="deleteNote('${note.id}')" title="Delete Note">🗑️</button>
       </div>
     </div>
   `).join('');
