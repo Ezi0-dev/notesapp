@@ -2,7 +2,6 @@ const express = require('express');
 const { body } = require('express-validator');
 const { authLimiter, strictLimiter } = require('../middleware/rateLimiter');
 const { authenticate } = require('../middleware/auth');
-const { checkAccountLock } = require('../middleware/security');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
@@ -57,7 +56,7 @@ const changePasswordValidation = [
 
 // Routes
 router.post('/register', authLimiter, registerValidation, authController.register);
-router.post('/login', authLimiter, checkAccountLock, loginValidation, authController.login);
+router.post('/login', authLimiter, loginValidation, authController.login);
 router.post('/refresh', authLimiter, refreshTokenValidation, authController.refreshToken);
 router.post('/logout', authenticate, authController.logout);
 router.get('/profile', authenticate, authController.getProfile);
