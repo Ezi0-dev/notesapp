@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends - Secure Notes</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/friends.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="dashboard.html" class="nav-brand">Secure Notes</a>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html">My Notes</a></li>
+                <li><a href="shared.html">Shared Notes</a></li>
+                <li><a href="friends.html" class="active">Friends</a></li>
+                <li><a href="search.html">Search Users</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="friends-container">
+            <h1>Friends</h1>
+            
+            <!-- Friends List -->
+            <div class="friends-section">
+                <h2>Your Friends</h2>
+                <div id="friendsList" class="friends-list">
+                    <p class="no-friends">You haven't added any friends yet. Use the search page to find and add friends!</p>
+                </div>
+            </div>
+
+            <!-- Friend Requests -->
+            <div class="friends-section">
+                <h2>Friend Requests</h2>
+                <div id="friendRequests" class="requests-list">
+                    <p class="no-requests">No pending friend requests</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content profile-modal">
+            <span class="close">&times;</span>
+            <div class="profile-header">
+                <img id="profilePicture" src="" alt="Profile Picture" class="profile-picture">
+                <div class="profile-info">
+                    <h2 id="profileUsername"></h2>
+                    <p id="profileMemberSince"></p>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button id="addFriendBtn" class="btn-primary">Add Friend</button>
+                <button id="removeFriendBtn" class="btn-danger" style="display: none;">Remove Friend</button>
+                <p id="friendshipStatus" class="friendship-status"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/friends.js"></script>
+</body>
+</html>
