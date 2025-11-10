@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production && npm install nodemon
+RUN npm install --only=production && npm install nodemon
 
 COPY . .
 
