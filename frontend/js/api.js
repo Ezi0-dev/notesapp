@@ -21,12 +21,20 @@ const api = {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('API request failed:', {
+          endpoint: `${API_URL}${endpoint}`,
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
+
         if (response.status === 401) {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
           window.location.href = '/login.html';
         }
+
         throw new Error(data.error?.message || 'Request failed');
       }
 
@@ -126,9 +134,81 @@ const api = {
     });
   },
 
+  async updateSharedNote(id, title, content, encrypted = true) {
+    return this.request(`/sharing/shared-notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, content, encrypted }),
+    });
+  },
+
   async deleteNote(id) {
     return this.request(`/notes/${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  // Friends endpoints
+  async searchUsers(username) {
+    return this.request(`/friends/search?username=${encodeURIComponent(username)}`);
+  },
+
+  async sendFriendRequest(friendUsername) {
+    return this.request('/friends/request', {
+      method: 'POST',
+      body: JSON.stringify({ friendUsername }),
+    });
+  },
+
+  async getPendingFriendRequests() {
+    return this.request('/friends/requests');
+  },
+
+  async getFriends() {
+    return this.request('/friends');
+  },
+
+  async removeFriend(friendId) {
+    return this.request(`/friends/${friendId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async acceptFriendRequest(friendshipId) {
+    return this.request(`/friends/accept/${friendshipId}`, {
+      method: 'POST',
+    });
+  },
+
+  // Sharing endpoints
+  async getNoteShares(noteId) {
+    return this.request(`/sharing/notes/${noteId}/shares`);
+  },
+
+  async getSharedWithMe() {
+    return this.request('/sharing/shared-with-me');
+  },
+
+  async getSharedNote(noteId) {
+    return this.request(`/sharing/notes/${noteId}`);
+  },
+
+  async shareNote(noteId, friendId, permission = 'read') {
+    return this.request(`/sharing/notes/${noteId}/share`, {
+      method: 'POST',
+      body: JSON.stringify({ friendId, permission }),
+    });
+  },
+
+  async unshareNote(noteId, friendId) {
+    return this.request(`/sharing/notes/${noteId}/share/${friendId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async updateSharePermission(noteId, friendId, permission) {
+    return this.request(`/sharing/notes/${noteId}/share/${friendId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ permission })
     });
   },
 };
