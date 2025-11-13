@@ -64,6 +64,10 @@
           <span class="stat-label">Encrypted:</span>
           <span class="stat-value" id="encryptedNotes">0</span>
         </div>
+        <div class="stat-item">
+          <span class="stat-label">Shared Notes:</span>
+          <span class="stat-value" id="sharedNotes">0</span>
+        </div>
       </div>
     </aside>
 
@@ -140,6 +144,44 @@
       </form>
     </div>
   </div>
+
+  <!-- Share Note Modal -->
+<div id="shareModal" class="modal">
+  <div class="modal-content">
+    <h2>Share Note</h2>
+    <div id="shareError" class="error-message"></div>
+    <form id="shareForm" onsubmit="event.preventDefault(); confirmShare();">
+      <div class="form-group">
+        <label for="shareFriendSelect">Select Friend</label>
+        <select id="shareFriendSelect" required>
+          <option value="">Choose a friend...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="sharePermissionSelect">Permission</label>
+        <select id="sharePermissionSelect">
+          <option value="read">Read Only</option>
+          <option value="write">Read & Write</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Share</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="manageSharesModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Manage Shares</h2>
+      <span class="close" onclick="closeManageSharesModal()">&times;</span>
+    </div>
+    <div id="manageSharesError" class="error-message"></div>
+    <div id="sharesList"></div>
+  </div>
+</div>
 
   <!-- IMPORTANT: Load scripts in this exact order -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js"></script>
