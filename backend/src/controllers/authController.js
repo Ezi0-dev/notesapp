@@ -1,8 +1,8 @@
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { validationResult } = require('express-validator');
-const { bcrypt: bcryptConfig, jwt: jwtConfig, lockout } = require('../config/security');
+const { jwt: jwtConfig } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 
@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    const passwordHash = await bcrypt.hash(password, bcryptConfig.saltRounds);
+    const passwordHash = await argon2.hash(password);
 
     const result = await pool.query(
       'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, created_at',
@@ -96,7 +96,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Find user by username (changed from email)
+    // Find user by username 
     const result = await pool.query(
       'SELECT id, username, email, password_hash, failed_login_attempts, account_locked_until FROM users WHERE username = $1',
       [username]
@@ -120,12 +120,17 @@ exports.login = async (req, res) => {
     }
 
     // Verify password
-    const validPassword = await bcrypt.compare(password, user.password_hash);
+    const validPassword = await argon2.verify(user.password_hash, password);
     
     if (!validPassword) {
       // Increment failed login attempts
       const newFailedAttempts = (user.failed_login_attempts || 0) + 1;
       let accountLockedUntil = null;
+
+      await logSecurityEvent(user.id, 'LOGIN_FAILED', req, { 
+        reason: 'invalid_password',
+        attempts: user.failed_login_attempts + 1
+      });
 
       if (newFailedAttempts >= 5) {
         accountLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes

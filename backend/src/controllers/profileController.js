@@ -1,8 +1,7 @@
 // backend/src/controllers/profileController.js
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2');
 const { pool } = require('../config/database');
 const { validationResult } = require('express-validator');
-const { bcrypt: bcryptConfig } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 
@@ -34,7 +33,7 @@ exports.changePassword = async (req, res) => {
     console.log('Found user:', user.username);
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    const isValidPassword = await argon2.verify(user.password_hash, currentPassword);
     console.log('Current password valid:', isValidPassword);
     
     if (!isValidPassword) {
@@ -47,7 +46,7 @@ exports.changePassword = async (req, res) => {
     }
 
     // Check if new password is same as old
-    const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+    const isSamePassword = await argon2.verify(user.password_hash, newPassword);
     if (isSamePassword) {
       console.log('New password same as old');
       return res.status(400).json({
@@ -57,7 +56,7 @@ exports.changePassword = async (req, res) => {
 
     // Hash new password
     console.log('Hashing new password...');
-    const newPasswordHash = await bcrypt.hash(newPassword, bcryptConfig.saltRounds);
+    const newPasswordHash = await argon2.hash(newPassword);
 
     // Update password
     console.log('Updating password in database...');

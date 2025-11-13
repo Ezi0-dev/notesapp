@@ -5,12 +5,9 @@ module.exports = {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
   },
-  bcrypt: {
-    saltRounds: 12,
-  },
   rateLimit: {
     windowMs: 5 * 60 * 1000,
-    maxAuth: 5,
+    maxAuth: 10,
     maxApi: 100,
   },
   lockout: {
