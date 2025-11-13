@@ -343,7 +343,6 @@ body {
   transition: all 0.3s ease;
   color: var(--text-color);
   font-weight: 500;
-  height: -webkit-fill-available;
 }
 
 .btn-friends {
@@ -359,7 +358,6 @@ body {
   transition: all 0.3s ease;
   color: var(--text-color);
   font-weight: 500;
-  height: -webkit-fill-available;
 }
 
 .btn-friends:hover {
@@ -1008,11 +1006,22 @@ body {
 
 @media (min-width: 1025px) {
   .btn-logout {
-    width: auto;
+    width: 7rem;
+    height: 4rem;
+    padding: 1.115rem;
+  }
+
+    .btn-friends {
+    width: 7rem;
+    height: 4rem;
     padding: 1.115rem;
   }
 
   .logout-text {
     display: inline;
+  }
+  
+  .profile-button {
+    height: 4rem;
   }
 }
