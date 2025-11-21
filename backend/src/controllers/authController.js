@@ -2,7 +2,7 @@ const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { validationResult } = require('express-validator');
-const { jwt: jwtConfig } = require('../config/security');
+const { jwt: jwtConfig, lockout } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 
@@ -127,13 +127,8 @@ exports.login = async (req, res) => {
       const newFailedAttempts = (user.failed_login_attempts || 0) + 1;
       let accountLockedUntil = null;
 
-      await logSecurityEvent(user.id, 'LOGIN_FAILED', req, { 
-        reason: 'invalid_password',
-        attempts: user.failed_login_attempts + 1
-      });
-
-      if (newFailedAttempts >= 5) {
-        accountLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      if (newFailedAttempts >= lockout.maxAttempts) {
+        accountLockedUntil = new Date(Date.now() + lockout.lockoutTime); // Fixed for easier configuring
       }
 
       await pool.query(
@@ -141,7 +136,7 @@ exports.login = async (req, res) => {
         [newFailedAttempts, accountLockedUntil, user.id]
       );
 
-      await auditLog(user.id, 'LOGIN_FAILED', false, req, { reason: 'Invalid password' });
+      await auditLog(user.id, 'LOGIN_FAILED', false, req, { reason: 'Invalid password', attempts : newFailedAttempts });
 
       return res.status(401).json({ 
         error: { message: 'Invalid username or password' } 

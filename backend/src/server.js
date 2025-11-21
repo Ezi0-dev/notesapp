@@ -53,7 +53,7 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:8080',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parsing with size limits

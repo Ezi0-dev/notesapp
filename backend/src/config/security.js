@@ -7,11 +7,11 @@ module.exports = {
   },
   rateLimit: {
     windowMs: 5 * 60 * 1000,
-    maxAuth: 10,
+    maxAuth: 20,
     maxApi: 100,
   },
   lockout: {
-    maxAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS) || 5,
-    lockoutTime: parseInt(process.env.LOCKOUT_TIME) || 5 * 60 * 1000,
+    maxAttempts: 10,
+    lockoutTime: 5 * 60 * 1000  // Milliseconds so 5 minutes
   }
 };
