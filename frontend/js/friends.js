@@ -254,7 +254,7 @@ async function openProfileModal(userId, username) {
     // Set profile information
     profilePicture.src = getUserAvatar(username);
     profileUsername.textContent = username;
-    profileMemberSince.textContent = 'Member since 2024';
+    profileMemberSince.textContent = 'Member since 2025';
     
     // Check and update friendship status
     await updateFriendshipStatus(userId);

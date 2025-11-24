@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      e.stopPropagation();
       
       // Changed from email to username
       const username = document.getElementById('username').value.trim();

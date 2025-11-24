@@ -16,7 +16,7 @@ const noteValidation = [
     .trim()
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters')
-    .escape(), // XSS protection
+    .escape(), // XSS prot
   body('content')
     .trim()
     .isLength({ min: 1, max: 50000 })
@@ -29,7 +29,7 @@ const noteValidation = [
 
 const idValidation = [
   param('id')
-    .isInt({ min: 1 })
+    .isUUID()
     .withMessage('Invalid note ID')
 ];
 

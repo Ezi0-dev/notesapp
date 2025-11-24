@@ -9,6 +9,7 @@ const { logger } = require('../utils/logger');
  * @param {object} req - Express request object
  * @param {object} details - Additional details to log
  */
+
 async function logSecurityEvent(eventType, severity, userId, req, details = {}) {
   try {
     await pool.query(
