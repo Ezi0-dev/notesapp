@@ -74,5 +74,6 @@ router.put('/notes/:noteId/share/:friendId', permissionUpdateValidation, sharing
 router.get('/shared-with-me', sharingController.getSharedWithMe);
 router.put('/shared-notes/:noteId', sharedNoteUpdateValidation, sharingController.updateSharedNote);
 router.get('/notes/:id', sharingController.getSharedNote);
+router.delete('/notes/:noteId/leave', sharingController.leaveSharedNote);
 
 module.exports = router;

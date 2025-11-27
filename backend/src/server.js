@@ -13,7 +13,9 @@ const authRoutes = require('./routes/auth');
 const notesRoutes = require('./routes/notes');
 const friendsRoutes = require('./routes/friends');
 const sharingRoutes = require('./routes/sharing');
+const notificationRoutes = require('./routes/notifications');
 const { pool } = require('./config/database');
+const scheduler = require('./jobs/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,9 +71,18 @@ app.use(hpp());
 // Custom security middleware
 app.use(securityMiddleware);
 
+// Static file serving for uploaded avatars with CORS headers
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:8080');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static('uploads'));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Freind sharing stuff
 app.use('/api/friends', friendsRoutes);
@@ -114,7 +125,19 @@ app.use((req, res) => {
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, closing server gracefully');
   server.close(() => {
+    scheduler.stop();
     pool.end();
+    logger.info('✓ Server shutdown complete');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, closing server gracefully');
+  server.close(() => {
+    scheduler.stop();
+    pool.end();
+    logger.info('✓ Server shutdown complete');
     process.exit(0);
   });
 });
@@ -123,11 +146,16 @@ process.on('SIGTERM', () => {
 const server = app.listen(PORT, '0.0.0.0', async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`🔒 Security features enabled`);
-  
+
   try {
     await pool.query('SELECT NOW()');
     logger.info('✅ Database connected successfully');
+
+    // Start automated maintenance jobs
+    scheduler.start();
+    logger.info('✅ Scheduled maintenance jobs started');
   } catch (err) {
     logger.error('❌ Database connection failed:', err.message);
+    logger.error('⚠️  Scheduled jobs not started');
   }
 });

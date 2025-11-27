@@ -49,15 +49,30 @@ exports.sendFriendRequest = async (req, res) => {
         }
 
         // Create friend request
-        await pool.query(
-            'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3)',
+        const friendshipResult = await pool.query(
+            'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) RETURNING id',
             [userId, friendId, 'pending']
+        );
+
+        const friendshipId = friendshipResult.rows[0].id;
+
+        // Create notification for the friend
+        const requesterUsername = req.user.username;
+        await pool.query(
+            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+            [
+                friendId,
+                'friend_request',
+                userId,
+                friendshipId,
+                `${requesterUsername} sent you a friend request`
+            ]
         );
 
         await auditLog(userId, 'FRIEND_REQUEST_SENT', true, req, { friendId, friendUsername });
         logger.info(`Friend request sent by user ${userId} to user ${friendId}`);
 
-        res.status(201).json({ 
+        res.status(201).json({
             message: 'Friend request sent',
             friend: { id: friendId, username: friendUsername }
         });
@@ -113,10 +128,28 @@ exports.acceptFriendRequest = async (req, res) => {
             return res.status(404).json({ error: { message: 'Friend request not found' } });
         }
 
+        const requesterId = friendship.rows[0].user_id;
+
         // Update status to accepted
         await pool.query(
             'UPDATE friendships SET status = $1, accepted_at = CURRENT_TIMESTAMP WHERE id = $2',
             ['accepted', friendshipId]
+        );
+
+        // Mark the friend request notification as read
+        await pool.query(
+            `UPDATE notifications 
+             SET is_read = TRUE 
+             WHERE user_id = $1 AND type = 'friend_request' AND related_id = $2`,
+            [userId, friendshipId]
+        );
+
+        // Create notification for requester that their request was accepted
+        const accepterUsername = req.user.username;
+        await pool.query(
+            `INSERT INTO notifications (user_id, type, from_user_id, related_id, message) 
+             VALUES ($1, $2, $3, $4, $5)`,
+            [requesterId, 'friend_request', userId, friendshipId, `${accepterUsername} accepted your friend request!`]
         );
 
         await auditLog(userId, 'FRIEND_REQUEST_ACCEPTED', true, req, { friendshipId });
@@ -149,6 +182,12 @@ exports.rejectFriendRequest = async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ error: { message: 'Friend request not found' } });
         }
+
+        // Delete notification
+        await pool.query(
+            'DELETE FROM notifications WHERE user_id = $1 AND type = $2 AND related_id = $3',
+            [userId, 'friend_request', friendshipId]
+        );
 
         await auditLog(userId, 'FRIEND_REQUEST_REJECTED', true, req, { friendshipId });
         logger.info(`Friend request ${friendshipId} rejected by user ${userId}`);
@@ -207,7 +246,8 @@ exports.removeFriend = async (req, res) => {
         const result = await pool.query(
             `DELETE FROM friendships 
              WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-             AND status = 'accepted'`,
+             AND status = 'accepted'
+             RETURNING id`,
             [userId, friendId]
         );
 
@@ -215,8 +255,25 @@ exports.removeFriend = async (req, res) => {
             return res.status(404).json({ error: { message: 'Friendship not found' } });
         }
 
+        const friendshipId = result.rows[0].id;
+
+        // Remove all note shares between these users (both directions)
+        await pool.query(
+            `DELETE FROM note_shares 
+             WHERE (owner_id = $1 AND shared_with_id = $2) 
+             OR (owner_id = $2 AND shared_with_id = $1)`,
+            [userId, friendId]
+        );
+
+        // Delete notifications related to this friendship
+        await pool.query(
+            `DELETE FROM notifications 
+             WHERE related_id = $1 AND type IN ('friend_request', 'note_shared')`,
+            [friendshipId]
+        );
+
         await auditLog(userId, 'FRIEND_REMOVED', true, req, { friendId });
-        logger.info(`User ${userId} removed friend ${friendId}`);
+        logger.info(`User ${userId} removed friend ${friendId} and unshared all notes`);
 
         res.json({ message: 'Friend removed' });
     } catch (err) {

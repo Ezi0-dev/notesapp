@@ -54,6 +54,22 @@ exports.shareNote = async (req, res) => {
             [noteId, userId, friendId, permission]
         );
 
+        // Create notification for the friend
+        const note = noteResult.rows[0];
+        const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const ownerUsername = ownerResult.rows[0].username;
+
+        await pool.query(
+            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+            [
+                friendId,
+                'note_shared',
+                userId,
+                noteId,
+                `${ownerUsername} shared a note "${note.title}" with you`
+            ]
+        );
+
         await auditLog(userId, 'NOTE_SHARED', true, req, { noteId, friendId, permission });
         logger.info(`Note ${noteId} shared by user ${userId} with user ${friendId}`);
 
@@ -75,6 +91,12 @@ exports.unshareNote = async (req, res) => {
         const userId = req.user.userId;
         const { noteId, friendId } = req.params;
 
+        // Get note details before deleting the share
+        const noteResult = await pool.query(
+            'SELECT title FROM notes WHERE id = $1',
+            [noteId]
+        );
+
         const result = await pool.query(
             'DELETE FROM note_shares WHERE note_id = $1 AND owner_id = $2 AND shared_with_id = $3',
             [noteId, userId, friendId]
@@ -82,6 +104,24 @@ exports.unshareNote = async (req, res) => {
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: { message: 'Share not found' } });
+        }
+
+        // Create notification for the friend
+        if (noteResult.rows.length > 0) {
+            const noteTitle = noteResult.rows[0].title;
+            const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+            const ownerUsername = ownerResult.rows[0].username;
+
+            await pool.query(
+                'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+                [
+                    friendId,
+                    'note_unshared',
+                    userId,
+                    noteId,
+                    `${ownerUsername} unshared the note "${noteTitle}" with you`
+                ]
+            );
         }
 
         await auditLog(userId, 'NOTE_UNSHARED', true, req, { noteId, friendId });
@@ -249,6 +289,16 @@ exports.updateSharePermission = async (req, res) => {
         const { noteId, friendId } = req.params;
         const { permission } = req.body;
 
+        // Get note details before updating
+        const noteResult = await pool.query(
+            'SELECT title FROM notes WHERE id = $1',
+            [noteId]
+        );
+
+        if (noteResult.rows.length === 0) {
+            return res.status(404).json({ error: { message: 'Note not found' } });
+        }
+
         const result = await pool.query(
             'UPDATE note_shares SET permission = $1 WHERE note_id = $2 AND owner_id = $3 AND shared_with_id = $4',
             [permission, noteId, userId, friendId]
@@ -258,6 +308,22 @@ exports.updateSharePermission = async (req, res) => {
             return res.status(404).json({ error: { message: 'Share not found' } });
         }
 
+        // Create notification for the friend
+        const noteTitle = noteResult.rows[0].title;
+        const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const ownerUsername = ownerResult.rows[0].username;
+
+        await pool.query(
+            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+            [
+                friendId,
+                'share_permission_updated',
+                userId,
+                noteId,
+                `${ownerUsername} changed your permission to "${permission}" for note "${noteTitle}"`
+            ]
+        );
+
         await auditLog(userId, 'SHARE_PERMISSION_UPDATED', true, req, { noteId, friendId, permission });
         logger.info(`Share permission updated for note ${noteId} by user ${userId}`);
 
@@ -265,6 +331,59 @@ exports.updateSharePermission = async (req, res) => {
     } catch (err) {
         logger.error('Update permission error:', err);
         res.status(500).json({ error: { message: 'Failed to update permission' } });
+    }
+};
+
+// If a user wants to leave a note that has been shared with them
+exports.leaveSharedNote = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { noteId } = req.params;
+
+        // Get share and note details before deleting
+        const shareResult = await pool.query(
+            `SELECT ns.owner_id, n.title
+             FROM note_shares ns
+             JOIN notes n ON ns.note_id = n.id
+             WHERE ns.note_id = $1 AND ns.shared_with_id = $2`,
+            [noteId, userId]
+        );
+
+        if (shareResult.rows.length === 0) {
+            return res.status(404).json({ error: { message: 'Shared note not found' } });
+        }
+
+        const ownerId = shareResult.rows[0].owner_id;
+        const noteTitle = shareResult.rows[0].title;
+
+        const result = await pool.query(
+            'DELETE FROM note_shares WHERE note_id = $1 AND shared_with_id = $2',
+            [noteId, userId]
+        );
+
+        // Create notification for the owner
+        const leaverResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const leaverUsername = leaverResult.rows[0].username;
+
+        await pool.query(
+            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+            [
+                ownerId,
+                'note_left',
+                userId,
+                noteId,
+                `${leaverUsername} left the shared note "${noteTitle}"`
+            ]
+        );
+
+        logger.info(`User ${userId} left shared note ${noteId}`);
+        await auditLog(userId, 'LEAVE_NOTE', true, req, { noteId });
+
+        res.json({ message: 'Successfully left shared note' });
+
+    } catch (err) {
+        logger.error('Leave shared note error:', err);
+        res.status(500).json({ error: { message: 'Failed to leave shared note' } });
     }
 };
 
@@ -303,12 +422,10 @@ exports.updateSharedNote = async (req, res) => {
         const isEncrypted = noteResult.rows[0].encrypted;
 
         // Encrypt if needed
-        let finalTitle = title;
         let finalContent = content;
 
         if (isEncrypted) {
             try {
-                finalTitle = encrypt(title);
                 finalContent = encrypt(content);
             } catch (encryptError) {
                 logger.error('Encryption failed:', { userId, error: encryptError.message });
@@ -318,7 +435,7 @@ exports.updateSharedNote = async (req, res) => {
 
         await pool.query(
             'UPDATE notes SET title = $1, content = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-            [finalTitle, finalContent, noteId]
+            [title, finalContent, noteId]
         );
 
         await auditLog(userId, 'SHARED_NOTE_UPDATED', true, req, { noteId });
