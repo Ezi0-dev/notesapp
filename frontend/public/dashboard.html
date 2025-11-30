@@ -70,10 +70,10 @@
       
       <div class="search-box">
         <h3>Search</h3>
-        <input 
-          type="text" 
-          id="searchInput" 
-          class="search-input" 
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
           placeholder="Search notes..."
         >
       </div>
@@ -170,11 +170,14 @@
   </div>
 
   <!-- Share Note Modal -->
-<div id="shareModal" class="modal">
+<div id="shareModal" class="modal" style="display: none;">
   <div class="modal-content">
-    <h2>Share Note</h2>
+    <div class="modal-header">
+      <h2>Share Note</h2>
+      <button id="closeShareModal" class="modal-close" aria-label="Close modal">&times;</button>
+    </div>
     <div id="shareError" class="error-message"></div>
-    <form id="shareForm" onsubmit="event.preventDefault(); confirmShare();">
+    <form id="shareForm" class="note-form">
       <div class="form-group">
         <label for="shareFriendSelect">Select Friend</label>
         <select id="shareFriendSelect" required>
@@ -189,21 +192,21 @@
         </select>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Share</button>
+        <button type="button" class="btn btn-secondary" id="cancelShareBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="shareBtn"><span class="btn-text">Share</span></button>
       </div>
     </form>
   </div>
 </div>
 
-<div id="manageSharesModal" class="modal">
+<div id="manageSharesModal" class="modal" style="display: none;">
   <div class="modal-content">
     <div class="modal-header">
       <h2>Manage Shares</h2>
-      <span class="close" onclick="closeManageSharesModal()">&times;</span>
+      <button id="closeManageSharesModal" class="modal-close" aria-label="Close modal">&times;</button>
     </div>
     <div id="manageSharesError" class="error-message"></div>
-    <div id="sharesList"></div>
+    <div id="sharesList" class="note-form"></div>
   </div>
 </div>
 
