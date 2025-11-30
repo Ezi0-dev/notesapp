@@ -1,0 +1,383 @@
+/* ============================================
+   CARDS (Note Cards) - Ethereal Glassmorphism
+   ============================================ */
+
+.note-card {
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: calc(33.333% - 16px);
+  margin-bottom: 24px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  will-change: transform, box-shadow;
+  contain: layout style paint;
+}
+
+/* Ethereal gradient border using pseudo-element */
+.note-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.3),
+    rgba(139, 92, 246, 0.3),
+    transparent
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+/* Glowing hover effect */
+.note-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(99, 102, 241, 0.1) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-smooth);
+  pointer-events: none;
+  animation: rotateGlow 10s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes rotateGlow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.note-card:hover::before {
+  opacity: 1;
+}
+
+.note-card:hover::after {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+/* Enhanced glassmorphism effect on hover */
+.note-card:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.3),
+              0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth active state */
+.note-card:active {
+  transform: translateY(-6px) scale(1.01);
+}
+
+.note-card-header,
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  position: relative;
+  z-index: 1;
+}
+
+.note-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: flex-start;
+}
+
+.note-card-title,
+.note-title {
+  margin: 0;
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--text-color);
+  word-break: break-word;
+  flex: 1;
+  padding-bottom: var(--spacing-xs);
+  line-height: 1.4;
+  letter-spacing: -0.3px;
+}
+
+.note-badge {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(10px);
+  color: var(--success-color);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  animation: badgePulse 3s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.note-badge::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.5s ease;
+}
+
+.note-card:hover .note-badge::before {
+  left: 100%;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+  }
+}
+
+/* Shared note badge */
+.note-badge.shared {
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+  animation: sharedBadgePulse 3s ease-in-out infinite;
+}
+
+@keyframes sharedBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+  }
+}
+
+.note-badge.read,
+.note-badge.write {
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+  animation: none;
+}
+
+.note-badge.write {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.note-card-content,
+.note-preview {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.7;
+  margin: 0;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  position: relative;
+  z-index: 1;
+}
+
+.note-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  position: relative;
+  z-index: 1;
+}
+
+.note-date {
+  font-size: var(--font-sm);
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.note-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity var(--transition-smooth);
+  position: relative;
+  z-index: 2;
+}
+
+.note-card:hover .note-actions {
+  opacity: 1;
+}
+
+/* Enhanced action buttons with modern design */
+.note-actions button,
+.note-actions .btn-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-smooth);
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.note-actions button::before,
+.note-actions .btn-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+/* Individual button hover states with enhanced colors */
+.note-actions button:hover,
+.note-actions .btn-icon:hover {
+  transform: scale(1.15) rotate(5deg);
+  border-color: transparent;
+}
+
+/* Edit button (blue) */
+.note-actions button[title*="Edit"]::before,
+.note-actions .btn-icon[onclick*="editNote"]::before {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.6));
+}
+
+.note-actions button[title*="Edit"]:hover::before,
+.note-actions .btn-icon[onclick*="editNote"]:hover::before {
+  opacity: 1;
+}
+
+.note-actions button[title*="Edit"]:hover,
+.note-actions .btn-icon[onclick*="editNote"]:hover {
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
+}
+
+/* Share button (purple) */
+.note-actions button[title*="Share"]::before,
+.note-actions .btn-icon[onclick*="shareNote"]::before,
+.note-actions .btn-icon[onclick*="manageShares"]::before {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(124, 58, 237, 0.6));
+}
+
+.note-actions button[title*="Share"]:hover::before,
+.note-actions .btn-icon[onclick*="shareNote"]:hover::before,
+.note-actions .btn-icon[onclick*="manageShares"]:hover::before {
+  opacity: 1;
+}
+
+.note-actions button[title*="Share"]:hover,
+.note-actions .btn-icon[onclick*="shareNote"]:hover,
+.note-actions .btn-icon[onclick*="manageShares"]:hover {
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+}
+
+/* Delete button (red) */
+.note-actions button[title*="Delete"]::before,
+.note-actions .btn-icon[onclick*="deleteNote"]::before {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.6), rgba(220, 38, 38, 0.6));
+}
+
+.note-actions button[title*="Delete"]:hover::before,
+.note-actions .btn-icon[onclick*="deleteNote"]:hover::before {
+  opacity: 1;
+}
+
+.note-actions button[title*="Delete"]:hover,
+.note-actions .btn-icon[onclick*="deleteNote"]:hover {
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+}
+
+/* Leave button (yellow/warning) */
+.note-actions button[title*="Leave"]::before,
+.note-actions .btn-icon[onclick*="leaveNote"]::before {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.6), rgba(217, 119, 6, 0.6));
+}
+
+.note-actions button[title*="Leave"]:hover::before,
+.note-actions .btn-icon[onclick*="leaveNote"]:hover::before {
+  opacity: 1;
+}
+
+.note-actions button[title*="Leave"]:hover,
+.note-actions .btn-icon[onclick*="leaveNote"]:hover {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+}
+
+/* Active state for buttons */
+.note-actions button:active,
+.note-actions .btn-icon:active {
+  transform: scale(1.05) rotate(3deg);
+}
+
+/* Focus-visible styles for accessibility */
+.note-actions button:focus-visible,
+.note-actions .btn-icon:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .note-card,
+  .note-card::before,
+  .note-card::after,
+  .note-badge,
+  .note-actions button,
+  .note-actions .btn-icon {
+    animation: none !important;
+    transition-duration: 0.1s !important;
+  }
+}

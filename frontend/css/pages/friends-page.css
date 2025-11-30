@@ -1,0 +1,15 @@
+/* ============================================
+   FRIENDS PAGE LAYOUT
+   Page-specific container and layout
+   ============================================ */
+
+.friends-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+}
+
+body {
+  background: var(--bg-color);
+  min-height: 100vh;
+}

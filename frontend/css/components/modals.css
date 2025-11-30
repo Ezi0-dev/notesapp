@@ -1,0 +1,401 @@
+/* ============================================
+   MODALS & DIALOGS
+   ============================================ */
+
+/* Base Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  backdrop-filter: blur(8px);
+  animation: fadeIn var(--transition-base);
+}
+
+.modal-content {
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: var(--modal-max-width);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: var(--font-2xl);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.modal-close:hover {
+  background-color: var(--border-color);
+  color: var(--primary-color);
+}
+
+.note-form {
+  padding: var(--spacing-lg);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Share Modal Specific Styles */
+#shareModal .modal-content {
+  max-width: 500px;
+}
+
+#shareModal .form-group {
+  margin-bottom: var(--spacing-xl);
+}
+
+#shareModal select {
+  width: 100%;
+  padding: 1rem;
+  font-size: var(--font-base);
+  background-color: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23a8b5c7' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 16px;
+  padding-right: 3rem;
+}
+
+#shareModal select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+#shareModal select option {
+  background-color: var(--bg-secondary);
+  color: var(--text-color);
+  padding: var(--spacing-md);
+}
+
+/* Permission Select Styling */
+#sharePermissionSelect {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23a8b5c7' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+}
+
+/* Enhanced Select Hover */
+#shareModal select:hover {
+  border-color: var(--border-light);
+  background-color: var(--bg-tertiary);
+}
+
+/* Share Form Label Enhancements */
+#shareModal .form-group label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: var(--spacing-md);
+}
+
+#shareModal .form-group label::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Error Message in Share Modal */
+#shareError {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error-color);
+  border-radius: var(--radius-md);
+  color: var(--error-color);
+  font-size: var(--font-sm);
+  display: none;
+}
+
+#shareError:not(:empty) {
+  display: block;
+}
+
+/* Manage Shares Modal Enhancements */
+#manageSharesModal .modal-content {
+  max-width: 600px;
+}
+
+#sharesList {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--spacing-md) 0;
+}
+
+/* Share List Item */
+.share-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  transition: all var(--transition-base);
+}
+
+.share-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.share-item-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.share-item-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  font-size: var(--font-lg);
+  flex-shrink: 0;
+  transition: transform var(--transition-base);
+}
+
+.share-item:hover .share-item-avatar {
+  transform: scale(1.1);
+}
+
+.share-item-details h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-color);
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+.share-item-permission {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.share-item-permission.read {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--info-color);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.share-item-permission.write {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.share-item-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.share-item-actions .btn {
+  padding: 0.5rem 1rem;
+  font-size: var(--font-sm);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+/* Empty State for Manage Shares */
+.no-shares {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--text-muted);
+}
+
+.no-shares-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.5;
+}
+
+.no-shares p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* Confirmation Modal */
+.confirm-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  animation: fadeIn var(--transition-base);
+}
+
+.confirm-modal.show {
+  display: flex;
+}
+
+.confirm-content {
+  background: var(--bg-secondary);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 440px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+.confirm-header {
+  padding: 2rem 2rem 1rem 2rem;
+  text-align: center;
+}
+
+.confirm-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+.confirm-icon.warning {
+  color: var(--warning-color);
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.3));
+}
+
+.confirm-icon.danger {
+  color: var(--error-color);
+  filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.3));
+}
+
+.confirm-icon.success {
+  color: var(--success-color);
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.3));
+}
+
+.confirm-header h3 {
+  font-size: var(--font-2xl);
+  color: var(--text-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.confirm-body {
+  padding: 0 2rem 2rem 2rem;
+}
+
+.confirm-body p {
+  color: var(--text-muted);
+  line-height: 1.6;
+  text-align: center;
+  font-size: var(--font-base);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: 0 2rem 2rem 2rem;
+}
+
+.confirm-actions .btn {
+  flex: 1;
+  padding: 1rem;
+  font-size: var(--font-base);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  transition: all var(--transition-slow);
+}
+
+.confirm-actions .btn-cancel {
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.confirm-actions .btn-cancel:hover {
+  background: var(--border-color);
+  transform: translateY(-2px);
+}
+
+.confirm-actions .btn-confirm {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  border: none;
+}
+
+.confirm-actions .btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
+}
+
+.confirm-actions .btn-confirm.danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.confirm-actions .btn-confirm.danger:hover {
+  box-shadow: var(--shadow-error);
+}

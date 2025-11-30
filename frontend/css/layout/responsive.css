@@ -1,0 +1,193 @@
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Large Screens (Desktop) */
+@media (min-width: 1025px) {
+  .btn-logout,
+  .btn-friends,
+  .btn-notifications {
+    width: 7rem;
+    height: 4rem;
+    padding: 1.115rem;
+  }
+
+  .logout-text {
+    display: inline;
+  }
+
+  .profile-button {
+    height: 4rem;
+  }
+}
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+
+  .note-card {
+    width: calc(50% - 12px);
+  }
+
+  .profile-button-info {
+    display: none;
+  }
+
+  .profile-button {
+    justify-content: center;
+    padding: 0.75rem;
+  }
+
+  .btn-logout {
+    width: 48px;
+  }
+}
+
+/* Mobile Landscape / Small Tablets */
+@media (max-width: 768px) {
+  .dashboard-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .navbar-container {
+    padding: var(--spacing-md);
+  }
+
+  .navbar-menu {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+
+  .user-info {
+    align-items: flex-end;
+  }
+
+  .modal {
+    padding: var(--spacing-md);
+  }
+
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .modal-header,
+  .note-form {
+    padding: var(--spacing-lg);
+  }
+
+  .profile-actions {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .profile-button {
+    flex: 0 0 48px;
+    width: 48px;
+  }
+
+  /* Notifications Responsive */
+  .notifications-dropdown-content {
+    width: 90vw;
+    max-width: 380px;
+    right: -1rem;
+  }
+
+  .notifications-header {
+    padding: var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .notifications-header h3 {
+    font-size: var(--font-base);
+  }
+
+  .btn-mark-all-read {
+    font-size: var(--font-xs);
+    padding: 0.4rem 0.75rem;
+  }
+
+  .notification-item {
+    padding: var(--spacing-md);
+  }
+
+  .notification-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Mobile Portrait */
+@media (max-width: 640px) {
+  .confirm-content {
+    margin: var(--spacing-md);
+  }
+
+  .confirm-header {
+    padding: var(--spacing-lg) var(--spacing-lg) 0.75rem var(--spacing-lg);
+  }
+
+  .confirm-icon {
+    font-size: 3rem;
+  }
+
+  .confirm-header h3 {
+    font-size: var(--font-xl);
+  }
+
+  .confirm-body {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  }
+
+  .confirm-actions {
+    padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+    flex-direction: column;
+  }
+
+  .toast {
+    top: auto;
+    bottom: 2rem;
+    right: var(--spacing-md);
+    left: var(--spacing-md);
+    min-width: auto;
+  }
+
+  /* Notifications Extra Small Screens */
+  .notifications-dropdown-content {
+    width: calc(100vw - 2rem);
+    right: -0.5rem;
+    left: auto;
+  }
+
+  .notifications-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .btn-mark-all-read {
+    width: 100%;
+    margin-top: var(--spacing-sm);
+  }
+
+  .notification-actions {
+    flex-direction: column;
+  }
+
+  .notifications-list {
+    max-height: 400px;
+  }
+}

@@ -1,0 +1,108 @@
+/* ============================================
+   BASE RESET & NORMALIZATION
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+  background-attachment: fixed;
+  color: var(--text-color);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Ethereal Background Effects */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+              radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+  animation: etherealFloat 30s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes etherealFloat {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(30px, -30px) rotate(5deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) rotate(-5deg);
+  }
+}
+
+/* Ensure all content is above the background effect */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Remove default button styles */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Remove default link styles */
+a {
+  color: inherit;
+}
+
+/* Remove list styles */
+ul, ol {
+  list-style: none;
+}
+
+/* Image defaults */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Form element defaults */
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* Scrollbar Styling for Webkit Browsers */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--primary-light), var(--primary-color));
+  background-clip: padding-box;
+}

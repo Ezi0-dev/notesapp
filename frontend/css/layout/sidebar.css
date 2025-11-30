@@ -1,0 +1,165 @@
+/* ============================================
+   SIDEBAR - Ethereal Glass Design
+   ============================================ */
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  border-right: 1px solid rgba(148, 163, 184, 0.15);
+  height: auto;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Subtle gradient overlay */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(180deg,
+    rgba(99, 102, 241, 0.05) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Sidebar Sections */
+.sidebar-section {
+  margin-top: var(--spacing-xl);
+  position: relative;
+}
+
+.sidebar-section h3 {
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-lg);
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  position: relative;
+  padding-left: var(--spacing-md);
+}
+
+.sidebar-section h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-color), transparent);
+  border-radius: var(--radius-full);
+}
+
+/* Search Box */
+.search-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0;
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-box h3 {
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-sm);
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  position: relative;
+  padding-left: var(--spacing-md);
+}
+
+.search-box h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-color), transparent);
+  border-radius: var(--radius-full);
+}
+
+/* Statistics */
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: var(--spacing-sm);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.stat-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.stat-item:hover::before {
+  opacity: 1;
+}
+
+.stat-label {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.stat-value {
+  color: var(--primary-light);
+  font-weight: 700;
+  font-size: var(--font-lg);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Enhanced scrollbar for sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+  border-radius: 10px;
+}

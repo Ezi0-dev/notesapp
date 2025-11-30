@@ -1,0 +1,259 @@
+/* ============================================
+   FRIEND CARDS & LISTS
+   Friend management UI components
+   ============================================ */
+
+/* Friends Section */
+.friends-section {
+  margin-bottom: 40px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gradient accent */
+.friends-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-dark), var(--shared-color));
+  opacity: 0.7;
+}
+
+.friends-section h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xl);
+  color: var(--text-color);
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.friends-section h2::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  box-shadow: 0 0 12px var(--primary-color);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+/* Friends & Requests Lists */
+.friends-list,
+.requests-list {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+/* Friend & Request Items */
+.friend-item,
+.request-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-color);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient border effect on hover */
+.friend-item::before,
+.request-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--primary-color), var(--shared-color));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.friend-item:hover,
+.request-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateX(6px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+}
+
+.friend-item:hover::before,
+.request-item:hover::before {
+  opacity: 1;
+}
+
+/* Avatars */
+.friend-avatar,
+.request-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  margin-right: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-xl);
+  color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(91, 82, 255, 0.3);
+  border: 2px solid var(--bg-color);
+}
+
+.friend-item:hover .friend-avatar,
+.request-item:hover .request-avatar {
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(91, 82, 255, 0.5);
+}
+
+/* Info Sections */
+.friend-info,
+.request-info {
+  flex: 1;
+}
+
+.friend-name,
+.request-name {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-color);
+}
+
+.friend-since,
+.request-date {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+/* Actions */
+.friend-actions,
+.request-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* Empty States */
+.no-friends,
+.no-requests {
+  text-align: center;
+  color: var(--text-muted);
+  padding: var(--spacing-2xl);
+  background: var(--bg-color);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-color);
+}
+
+.no-friends::before,
+.no-requests::before {
+  content: '';
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--spacing-lg);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.no-friends::before {
+  content: '👥';
+}
+
+.no-requests::before {
+  content: '📬';
+}
+
+/* Profile Components (in modals) */
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-xl);
+}
+
+.profile-picture {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+  object-fit: cover;
+}
+
+.profile-info h2 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-color);
+}
+
+.profile-info p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.profile-actions {
+  text-align: center;
+}
+
+.friendship-status {
+  margin-top: var(--spacing-md);
+  font-style: italic;
+  color: var(--text-muted);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+}
+
+/* Friend Badge */
+.friend-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: var(--success-color);
+  color: white;
+  font-size: var(--font-xs);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}

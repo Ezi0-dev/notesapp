@@ -1,0 +1,10 @@
+/* ============================================
+   SEARCH PAGE LAYOUT
+   Page-specific container and layout
+   ============================================ */
+
+.search-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+}

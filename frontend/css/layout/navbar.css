@@ -1,0 +1,186 @@
+/* ============================================
+   NAVBAR & NAVIGATION - Ethereal Glassmorphism
+   ============================================ */
+
+.navbar {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  height: var(--navbar-height);
+  transition: all var(--transition-base);
+}
+
+/* Elegant gradient border on bottom */
+.navbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(99, 102, 241, 0.5) 20%,
+    rgba(139, 92, 246, 0.5) 50%,
+    rgba(99, 102, 241, 0.5) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: gradientFlow 8s ease-in-out infinite;
+}
+
+@keyframes gradientFlow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(50px);
+  }
+}
+
+.navbar-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1rem var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.navbar-brand h1 {
+  margin: 0;
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light), #a78bfa);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+  letter-spacing: -0.5px;
+  position: relative;
+  transition: all var(--transition-base);
+}
+
+.navbar-brand h1:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.6));
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+/* Profile Section */
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.profile-button {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  text-decoration: none;
+  color: var(--text-color);
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  border-radius: inherit;
+}
+
+.profile-button:hover::before {
+  opacity: 1;
+}
+
+.profile-button:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.profile-button > * {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-button-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-sm);
+  color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+  transition: all var(--transition-base);
+}
+
+.profile-button:hover .profile-button-avatar {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+}
+
+.profile-button-info {
+  flex: 1;
+  text-align: left;
+  transition: all var(--transition-base);
+}
+
+.profile-button-name {
+  font-size: var(--font-base);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.125rem;
+  transition: color var(--transition-base);
+}
+
+.profile-button:hover .profile-button-name {
+  color: white;
+}
+
+.profile-button-link {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  transition: color var(--transition-base);
+}
+
+.profile-button:hover .profile-button-link {
+  color: rgba(255, 255, 255, 0.9);
+}

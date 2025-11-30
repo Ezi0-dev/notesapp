@@ -1,0 +1,117 @@
+/* ============================================
+   LANDING PAGE
+   Homepage hero, features, and CTA sections
+   ============================================ */
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+body {
+  background: linear-gradient(135deg, var(--bg-color) 0%, #1e1b4b 100%);
+  height: 100vh;
+  display: flex;
+}
+
+/* Hero Section */
+.hero {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  margin-bottom: var(--spacing-md);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tagline {
+  font-size: var(--font-xl);
+  color: var(--text-muted);
+}
+
+/* Features Grid */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  width: 100%;
+}
+
+.feature-card {
+  background: var(--bg-secondary);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  border: 1px solid var(--border-color);
+  transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-color);
+}
+
+.feature-card .icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+.feature-card h3 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-color);
+}
+
+.feature-card p {
+  color: var(--text-muted);
+}
+
+/* CTA Buttons */
+.cta-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+/* Footer */
+footer {
+  margin-top: auto;
+  padding-top: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cta-buttons .btn {
+    width: 100%;
+  }
+}

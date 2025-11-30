@@ -1,0 +1,112 @@
+/* ============================================
+   AUTHENTICATION COMPONENTS
+   Login/Register forms and related UI
+   ============================================ */
+
+/* Auth Box Container */
+.auth-box {
+  background: var(--bg-secondary);
+  padding: var(--spacing-2xl);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 450px;
+  border: 1px solid var(--border-color);
+  margin: auto;
+}
+
+.auth-box h1 {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-3xl);
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Auth Form */
+.auth-form {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.auth-form .form-group label {
+  text-align: center;
+}
+
+.auth-form .form-group small {
+  text-align: center;
+}
+
+.auth-footer {
+  margin-top: var(--spacing-lg);
+  text-align: center;
+}
+
+.auth-link {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  color: var(--text-muted);
+}
+
+.auth-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  text-align: center;
+  display: none;
+}
+
+.password-strength.very-weak {
+  background: #dc2626;
+  color: white;
+}
+
+.password-strength.weak {
+  background: #f59e0b;
+  color: white;
+}
+
+.password-strength.fair {
+  background: #eab308;
+  color: white;
+}
+
+.password-strength.good {
+  background: #84cc16;
+  color: white;
+}
+
+.password-strength.strong {
+  background: #22c55e;
+  color: white;
+}
+
+.password-strength.very-strong {
+  background: #10b981;
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .auth-box {
+    padding: var(--spacing-xl);
+  }
+}

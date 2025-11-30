@@ -1,0 +1,110 @@
+/* ============================================
+   CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   Modern Ethereal Design - Optimized for 1920x1080
+   ============================================ */
+
+:root {
+  /* Primary Colors - Ethereal Purple-Blue Gradient */
+  --primary-color: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-light: #818cf8;
+  --primary-glow: rgba(99, 102, 241, 0.5);
+  --secondary-color: #64748b;
+
+  /* Status Colors */
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+  --info-color: #3b82f6;
+
+  /* Semantic Note Colors */
+  --shared-color: #8b5cf6;
+  --owned-color: #3b82f6;
+  --status-readonly: #f59e0b;
+  --status-readwrite: #10b981;
+
+  /* Background Colors - Ethereal Dark Theme */
+  --bg-color: #0a0e27;
+  --bg-secondary: rgba(15, 23, 42, 0.7);
+  --bg-tertiary: rgba(30, 41, 59, 0.5);
+  --bg-hover: rgba(71, 85, 105, 0.3);
+  --bg-glass: rgba(15, 23, 42, 0.4);
+  --bg-glass-hover: rgba(30, 41, 59, 0.6);
+
+  /* Text Colors */
+  --text-color: #f1f5f9;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+
+  /* Border & Divider */
+  --border-color: rgba(148, 163, 184, 0.15);
+  --border-light: rgba(148, 163, 184, 0.25);
+  --divider-color: rgba(148, 163, 184, 0.1);
+
+  /* Shadows - Enhanced for Depth */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 80px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 8px 30px rgba(99, 102, 241, 0.5);
+  --shadow-error: 0 8px 30px rgba(239, 68, 68, 0.5);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+
+  /* Border Radius - Smoother, More Organic */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Spacing Scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* Transitions - Smooth and Fluid */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Typography */
+  --font-xs: 0.75rem;
+  --font-sm: 0.875rem;
+  --font-base: 1rem;
+  --font-lg: 1.125rem;
+  --font-xl: 1.25rem;
+  --font-2xl: 1.5rem;
+  --font-3xl: 2rem;
+
+  /* Z-Index Layers */
+  --z-base: 1;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* Component-Specific Variables */
+  --navbar-height: 80px;
+  --sidebar-width: 320px;
+  --notification-badge-size: 20px;
+  --notification-dropdown-width: 380px;
+  --notification-item-padding: 1rem;
+  --notification-max-height: 500px;
+  --modal-max-width: 700px;
+
+  /* Glassmorphism Effects */
+  --glass-blur: blur(20px);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  /* Animation Timings */
+  --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --animation-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+}
