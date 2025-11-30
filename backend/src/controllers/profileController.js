@@ -116,28 +116,111 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
-// Note: Profile picture upload/remove would require additional setup
-// with multer for file uploads and storage (S3, local filesystem, etc.)
-// For now, these are placeholder functions
+const fs = require('fs').promises;
+const path = require('path');
 
 exports.uploadAvatar = async (req, res) => {
   try {
-    // This would require multer middleware and file storage setup
-    // For educational purposes, return not implemented
-    res.status(501).json({ 
-      error: { message: 'Avatar upload not yet implemented. Coming soon!' } 
+    const userId = req.user.userId;
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        error: { message: 'No file uploaded' }
+      });
+    }
+
+    // Get user's current profile picture
+    const userResult = await pool.query(
+      'SELECT profile_picture, username FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Clean up uploaded file if user not found
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(404).json({ error: { message: 'User not found' } });
+    }
+
+    const oldProfilePicture = userResult.rows[0].profile_picture;
+
+    // Update database with new profile picture filename
+    await pool.query(
+      'UPDATE users SET profile_picture = $1 WHERE id = $2',
+      [req.file.filename, userId]
+    );
+
+    // Delete old profile picture file if it exists
+    if (oldProfilePicture) {
+      const oldFilePath = path.join('uploads/avatars', oldProfilePicture);
+      await fs.unlink(oldFilePath).catch(err => {
+        logger.warn(`Failed to delete old avatar: ${err.message}`);
+      });
+    }
+
+    await auditLog(userId, 'PROFILE_PICTURE_UPLOADED', true, req, {
+      filename: req.file.filename,
+      size: req.file.size
+    });
+
+    logger.info(`Profile picture uploaded for user ${userId} (${userResult.rows[0].username})`);
+
+    res.json({
+      message: 'Profile picture uploaded successfully',
+      profilePicture: req.file.filename
     });
   } catch (err) {
     logger.error('Upload avatar error:', err);
+    // Clean up uploaded file on error
+    if (req.file) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
     res.status(500).json({ error: { message: 'Failed to upload avatar' } });
   }
 };
 
 exports.removeAvatar = async (req, res) => {
   try {
-    // This would update user's avatar_url to null in database
-    res.status(501).json({ 
-      error: { message: 'Avatar removal not yet implemented. Coming soon!' } 
+    const userId = req.user.userId;
+
+    // Get user's current profile picture
+    const result = await pool.query(
+      'SELECT profile_picture, username FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: { message: 'User not found' } });
+    }
+
+    const profilePicture = result.rows[0].profile_picture;
+
+    if (!profilePicture) {
+      return res.status(400).json({
+        error: { message: 'No profile picture to remove' }
+      });
+    }
+
+    // Remove profile picture from database
+    await pool.query(
+      'UPDATE users SET profile_picture = NULL WHERE id = $1',
+      [userId]
+    );
+
+    // Delete file from filesystem
+    const filePath = path.join('uploads/avatars', profilePicture);
+    await fs.unlink(filePath).catch(err => {
+      logger.warn(`Failed to delete avatar file: ${err.message}`);
+    });
+
+    await auditLog(userId, 'PROFILE_PICTURE_REMOVED', true, req, {
+      filename: profilePicture
+    });
+
+    logger.info(`Profile picture removed for user ${userId} (${result.rows[0].username})`);
+
+    res.json({
+      message: 'Profile picture removed successfully'
     });
   } catch (err) {
     logger.error('Remove avatar error:', err);

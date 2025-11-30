@@ -3,8 +3,8 @@ function showSuccess(elementId, message) {
   const element = document.getElementById(elementId);
   if (element) {
     element.textContent = message;
-    element.style.display = 'block';
-    
+    element.style.display = "block";
+
     // Auto-hide after 5 seconds
     setTimeout(() => {
       hideMessage(elementId);
@@ -17,7 +17,7 @@ function showError(elementId, message) {
   const element = document.getElementById(elementId);
   if (element) {
     element.textContent = message;
-    element.style.display = 'block';
+    element.style.display = "block";
   }
 }
 
@@ -25,23 +25,23 @@ function showError(elementId, message) {
 function hideMessage(elementId) {
   const element = document.getElementById(elementId);
   if (element) {
-    element.style.display = 'none';
-    element.textContent = '';
+    element.style.display = "none";
+    element.textContent = "";
   }
 }
 
 // Check if user is authenticated
 function isAuthenticated() {
-  const token = localStorage.getItem('accessToken');
-  const user = localStorage.getItem('user');
+  const token = localStorage.getItem("accessToken");
+  const user = localStorage.getItem("user");
   return !!(token && user);
 }
 
 // Redirect to login if not authenticated
 function redirectIfNotAuthenticated() {
   if (!isAuthenticated()) {
-        setTimeout(() => {
-      window.location.href = '/login.html';
+    setTimeout(() => {
+      window.location.href = "/login.html";
     }, 5000);
   }
 }
@@ -49,7 +49,7 @@ function redirectIfNotAuthenticated() {
 // Redirect to dashboard if already authenticated
 function redirectIfAuthenticated() {
   if (isAuthenticated()) {
-    window.location.href = '/dashboard.html';
+    window.location.href = "/dashboard.html";
   }
 }
 
@@ -71,12 +71,26 @@ function updatePasswordStrength(password, elementId) {
   if (!element) return;
 
   const strength = checkPasswordStrength(password);
-  const strengthText = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
-  const strengthClass = ['very-weak', 'weak', 'fair', 'good', 'strong', 'very-strong'];
+  const strengthText = [
+    "Very Weak",
+    "Weak",
+    "Fair",
+    "Good",
+    "Strong",
+    "Very Strong",
+  ];
+  const strengthClass = [
+    "very-weak",
+    "weak",
+    "fair",
+    "good",
+    "strong",
+    "very-strong",
+  ];
 
-  element.className = 'password-strength ' + strengthClass[strength];
+  element.className = "password-strength " + strengthClass[strength];
   element.textContent = strengthText[strength];
-  element.style.display = 'block';
+  element.style.display = "block";
 }
 
 // Validate email format
@@ -87,13 +101,13 @@ function isValidEmail(email) {
 
 // Format file size
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  
+  if (bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
 // Debounce function for search/filter
@@ -115,7 +129,7 @@ async function copyToClipboard(text) {
     await navigator.clipboard.writeText(text);
     return true;
   } catch (err) {
-    console.error('Failed to copy:', err);
+    console.error("Failed to copy:", err);
     return false;
   }
 }
@@ -125,7 +139,7 @@ function getRelativeTime(dateString) {
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
   const intervals = {
     year: 31536000,
     month: 2592000,
@@ -133,23 +147,23 @@ function getRelativeTime(dateString) {
     day: 86400,
     hour: 3600,
     minute: 60,
-    second: 1
+    second: 1,
   };
-  
+
   for (const [unit, secondsInUnit] of Object.entries(intervals)) {
     const interval = Math.floor(seconds / secondsInUnit);
     if (interval >= 1) {
       return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
     }
   }
-  
-  return 'just now';
+
+  return "just now";
 }
 
 // Truncate text
 function truncate(text, maxLength) {
   if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
+  return text.substring(0, maxLength) + "...";
 }
 
 // Generate random ID
@@ -159,66 +173,89 @@ function generateId() {
 
 // Check if dark mode is enabled
 function isDarkMode() {
-  return document.body.classList.contains('dark-mode') || 
-         window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return (
+    document.body.classList.contains("dark-mode") ||
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
 }
 
 // Toggle dark mode
 function toggleDarkMode() {
-  document.body.classList.toggle('dark-mode');
-  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+  document.body.classList.toggle("dark-mode");
+  localStorage.setItem(
+    "darkMode",
+    document.body.classList.contains("dark-mode")
+  );
 }
 
 function escapeHtml(text) {
   const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
   };
-  return text.replace(/[&<>"']/g, m => map[m]);
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
+// Get user avatar URL with fallback
+function getUserAvatarUrl(profilePicture, username) {
+  if (profilePicture) {
+    // Return the uploaded profile picture URL
+    return `http://localhost:5000/uploads/avatars/${profilePicture}`;
+  }
+  // Fallback to generated avatar based on username
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+}
+
+// Get initials from username
+function getUserInitials(username) {
+  if (!username) return "??";
+  return username.substring(0, 2).toUpperCase();
 }
 
 // Custom Confirm Modal
 function showConfirm(options) {
   return new Promise((resolve) => {
-    const modal = document.getElementById('confirmModal');
-    const icon = document.getElementById('confirmIcon');
-    const title = document.getElementById('confirmTitle');
-    const message = document.getElementById('confirmMessage');
-    const cancelBtn = document.getElementById('confirmCancel');
-    const okBtn = document.getElementById('confirmOk');
+    const modal = document.getElementById("confirmModal");
+    const icon = document.getElementById("confirmIcon");
+    const title = document.getElementById("confirmTitle");
+    const message = document.getElementById("confirmMessage");
+    const cancelBtn = document.getElementById("confirmCancel");
+    const okBtn = document.getElementById("confirmOk");
 
     // Set content
-    icon.textContent = options.icon || '⚠️';
-    icon.className = `confirm-icon ${options.type || 'warning'}`;
-    title.textContent = options.title || 'Confirm Action';
-    message.textContent = options.message || 'Are you sure?';
-    okBtn.textContent = options.confirmText || 'Confirm';
-    okBtn.className = `btn btn-confirm ${options.type === 'danger' ? 'danger' : ''}`;
-    cancelBtn.textContent = options.cancelText || 'Cancel';
+    icon.textContent = options.icon || "⚠️";
+    icon.className = `confirm-icon ${options.type || "warning"}`;
+    title.textContent = options.title || "Confirm Action";
+    message.textContent = options.message || "Are you sure?";
+    okBtn.textContent = options.confirmText || "Confirm";
+    okBtn.className = `btn btn-confirm ${
+      options.type === "danger" ? "danger" : ""
+    }`;
+    cancelBtn.textContent = options.cancelText || "Cancel";
 
     // Show modal
-    modal.classList.add('show');
+    modal.classList.add("show");
 
     // Handle buttons
     const handleConfirm = () => {
-      modal.classList.remove('show');
+      modal.classList.remove("show");
       cleanup();
       resolve(true);
     };
 
     const handleCancel = () => {
-      modal.classList.remove('show');
+      modal.classList.remove("show");
       cleanup();
       resolve(false);
     };
 
     const cleanup = () => {
-      okBtn.removeEventListener('click', handleConfirm);
-      cancelBtn.removeEventListener('click', handleCancel);
-      modal.removeEventListener('click', handleOutsideClick);
+      okBtn.removeEventListener("click", handleConfirm);
+      cancelBtn.removeEventListener("click", handleCancel);
+      modal.removeEventListener("click", handleOutsideClick);
     };
 
     const handleOutsideClick = (e) => {
@@ -227,27 +264,27 @@ function showConfirm(options) {
       }
     };
 
-    okBtn.addEventListener('click', handleConfirm);
-    cancelBtn.addEventListener('click', handleCancel);
-    modal.addEventListener('click', handleOutsideClick);
+    okBtn.addEventListener("click", handleConfirm);
+    cancelBtn.addEventListener("click", handleCancel);
+    modal.addEventListener("click", handleOutsideClick);
   });
 }
 
 // Toast Notification
 function showToast(options) {
-  const toast = document.getElementById('toast');
-  const icon = toast.querySelector('.toast-icon');
-  const title = document.getElementById('toastTitle');
-  const message = document.getElementById('toastMessage');
+  const toast = document.getElementById("toast");
+  const icon = toast.querySelector(".toast-icon");
+  const title = document.getElementById("toastTitle");
+  const message = document.getElementById("toastMessage");
 
   // Set content
-  icon.textContent = options.icon || '✓';
-  title.textContent = options.title || 'Success';
-  message.textContent = options.message || 'Action completed';
-  toast.className = `toast ${options.type || 'success'} show`;
+  icon.textContent = options.icon || "✓";
+  title.textContent = options.title || "Success";
+  message.textContent = options.message || "Action completed";
+  toast.className = `toast ${options.type || "success"} show`;
 
   // Auto hide after 3 seconds
   setTimeout(() => {
-    toast.classList.remove('show');
+    toast.classList.remove("show");
   }, options.duration || 3000);
 }

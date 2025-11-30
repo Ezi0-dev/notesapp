@@ -63,9 +63,10 @@ router.get('/profile', authenticate, authController.getProfile);
 
 // Profile management routes
 const profileController = require('../controllers/profileController');
+const { uploadAvatar } = require('../middleware/upload');
 router.post('/change-password', authenticate, changePasswordValidation, profileController.changePassword);
 router.delete('/delete-account', authenticate, profileController.deleteAccount);
-router.post('/upload-avatar', authenticate, profileController.uploadAvatar);
+router.post('/upload-avatar', authenticate, uploadAvatar, profileController.uploadAvatar);
 router.delete('/remove-avatar', authenticate, profileController.removeAvatar);
 
 module.exports = router;

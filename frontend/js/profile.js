@@ -1,8 +1,8 @@
 // frontend/js/profile.js
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   redirectIfNotAuthenticated();
-  
+
   loadUserProfile();
   setupNavigationListeners();
   setupProfilePictureListeners();
@@ -13,20 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Navigation between sections
 function setupNavigationListeners() {
-  const navItems = document.querySelectorAll('.nav-item');
-  const sections = document.querySelectorAll('.settings-section');
+  const navItems = document.querySelectorAll(".nav-item");
+  const sections = document.querySelectorAll(".settings-section");
 
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const sectionId = item.getAttribute('data-section') + '-section';
-      
+  navItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const sectionId = item.getAttribute("data-section") + "-section";
+
       // Update active nav item
-      navItems.forEach(nav => nav.classList.remove('active'));
-      item.classList.add('active');
-      
+      navItems.forEach((nav) => nav.classList.remove("active"));
+      item.classList.add("active");
+
       // Show corresponding section
-      sections.forEach(section => section.classList.remove('active'));
-      document.getElementById(sectionId).classList.add('active');
+      sections.forEach((section) => section.classList.remove("active"));
+      document.getElementById(sectionId).classList.add("active");
     });
   });
 }
@@ -36,195 +36,231 @@ async function loadUserProfile() {
   try {
     const data = await api.getProfile();
     const user = data.user;
-    
+
     // Set profile picture initials
     const initials = user.username.substring(0, 2).toUpperCase();
-    document.getElementById('avatarInitials').textContent = initials;
-    document.getElementById('profileUsername').textContent = user.username;
-    document.getElementById('profileEmail').textContent = user.email;
-    
+    document.getElementById("avatarInitials").textContent = initials;
+    document.getElementById("profileUsername").textContent = user.username;
+    document.getElementById("profileEmail").textContent = user.email;
+
     // Set account info
-    document.getElementById('infoUsername').textContent = user.username;
-    document.getElementById('infoEmail').textContent = user.email;
-    document.getElementById('infoCreatedAt').textContent = new Date(user.created_at).toLocaleDateString();
-    document.getElementById('infoLastLogin').textContent = user.last_login 
+    document.getElementById("infoUsername").textContent = user.username;
+    document.getElementById("infoEmail").textContent = user.email;
+    document.getElementById("infoCreatedAt").textContent = new Date(
+      user.created_at
+    ).toLocaleDateString();
+    document.getElementById("infoLastLogin").textContent = user.last_login
       ? new Date(user.last_login).toLocaleString()
-      : 'Never';
-    
-    // Load profile picture if exists (future feature)
-    // For now, we'll use initials
-    
+      : "Never";
+
+    // Load profile picture if exists
+    console.log("User profile data:", user);
+    if (user.profile_picture) {
+      console.log("Loading profile picture:", user.profile_picture);
+      const avatarImage = document.getElementById("profilePicture");
+      const avatarPlaceholder = document.getElementById("avatarPlaceholder");
+
+      avatarImage.src = `http://localhost:5000/uploads/avatars/${user.profile_picture}`;
+      avatarImage.classList.add("show");
+      avatarPlaceholder.classList.add("hide");
+    } else {
+      console.log("No profile picture found");
+    }
   } catch (error) {
-    console.error('Failed to load profile:', error);
+    console.error("Failed to load profile:", error);
     showToast({
-      icon: '✗',
-      type: 'error',
-      title: 'Error',
-      message: 'Failed to load profile data'
+      icon: "✗",
+      type: "error",
+      title: "Error",
+      message: "Failed to load profile data",
     });
   }
 }
 
 // Profile Picture Handlers
 function setupProfilePictureListeners() {
-  const uploadBtn = document.getElementById('uploadAvatarBtn');
-  const removeBtn = document.getElementById('removeAvatarBtn');
-  const avatarInput = document.getElementById('avatarInput');
-  const avatarImage = document.getElementById('profilePicture');
-  const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+  const uploadBtn = document.getElementById("uploadAvatarBtn");
+  const removeBtn = document.getElementById("removeAvatarBtn");
+  const avatarInput = document.getElementById("avatarInput");
+  const avatarImage = document.getElementById("profilePicture");
+  const avatarPlaceholder = document.getElementById("avatarPlaceholder");
 
-  uploadBtn.addEventListener('click', () => {
+  uploadBtn.addEventListener("click", () => {
     avatarInput.click();
   });
 
-  avatarInput.addEventListener('change', async (e) => {
+  avatarInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Validate file size (2MB max)
     if (file.size > 2 * 1024 * 1024) {
       showToast({
-        icon: '✗',
-        type: 'error',
-        title: 'File Too Large',
-        message: 'Please choose an image under 2MB'
+        icon: "✗",
+        type: "error",
+        title: "File Too Large",
+        message: "Please choose an image under 2MB",
       });
       return;
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       showToast({
-        icon: '✗',
-        type: 'error',
-        title: 'Invalid File',
-        message: 'Please choose an image file'
+        icon: "✗",
+        type: "error",
+        title: "Invalid File",
+        message: "Please choose an image file",
       });
       return;
     }
 
-    // Preview image locally
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      avatarImage.src = e.target.result;
-      avatarImage.classList.add('show');
-      avatarPlaceholder.classList.add('hide');
-      
-      showToast({
-        icon: '📷',
-        type: 'success',
-        title: 'Picture Updated',
-        message: 'Profile picture uploaded successfully'
-      });
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Upload to server first
+      console.log("Uploading profile picture...");
+      const data = await api.uploadProfilePicture(file);
+      console.log("Upload response:", data);
 
-    // In a real app, you'd upload to server here:
-    // await api.uploadProfilePicture(file);
+      // Display the uploaded image from server
+      if (data.profilePicture) {
+        avatarImage.src = `http://localhost:5000/uploads/avatars/${data.profilePicture}`;
+        avatarImage.classList.add("show");
+        avatarPlaceholder.classList.add("hide");
+
+        // Show success message
+        showToast({
+          icon: "📷",
+          type: "success",
+          title: "Picture Updated",
+          message: "Profile picture uploaded successfully",
+        });
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      showToast({
+        icon: "✗",
+        type: "error",
+        title: "Upload Failed",
+        message: error.message || "Failed to upload profile picture",
+      });
+    }
   });
 
-  removeBtn.addEventListener('click', async () => {
+  removeBtn.addEventListener("click", async () => {
     const confirmed = await showConfirm({
-      icon: '🗑️',
-      type: 'warning',
-      title: 'Remove Picture?',
-      message: 'Your profile picture will be removed and replaced with your initials.',
-      confirmText: 'Remove',
-      cancelText: 'Keep'
+      icon: "🗑️",
+      type: "warning",
+      title: "Remove Picture?",
+      message:
+        "Your profile picture will be removed and replaced with your initials.",
+      confirmText: "Remove",
+      cancelText: "Keep",
     });
 
     if (confirmed) {
-      avatarImage.classList.remove('show');
-      avatarPlaceholder.classList.remove('hide');
-      avatarInput.value = '';
-      
-      showToast({
-        icon: '✓',
-        type: 'success',
-        title: 'Picture Removed',
-        message: 'Profile picture has been removed'
-      });
+      try {
+        await api.removeProfilePicture();
 
-      // In a real app: await api.removeProfilePicture();
+        avatarImage.classList.remove("show");
+        avatarPlaceholder.classList.remove("hide");
+        avatarInput.value = "";
+
+        showToast({
+          icon: "✓",
+          type: "success",
+          title: "Picture Removed",
+          message: "Profile picture has been removed",
+        });
+      } catch (error) {
+        showToast({
+          icon: "✗",
+          type: "error",
+          title: "Error",
+          message: error.message || "Failed to remove profile picture",
+        });
+      }
     }
   });
 }
 
 // Password Strength Indicator
 function setupPasswordStrengthIndicator() {
-  const newPasswordInput = document.getElementById('newPassword');
-  newPasswordInput.addEventListener('input', (e) => {
-    updatePasswordStrength(e.target.value, 'newPasswordStrength');
+  const newPasswordInput = document.getElementById("newPassword");
+  newPasswordInput.addEventListener("input", (e) => {
+    updatePasswordStrength(e.target.value, "newPasswordStrength");
   });
 }
 
 // Change Password
 function setupPasswordChangeListener() {
-  const form = document.getElementById('changePasswordForm');
-  
-  form.addEventListener('submit', async (e) => {
+  const form = document.getElementById("changePasswordForm");
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-    
+
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    const confirmNewPassword =
+      document.getElementById("confirmNewPassword").value;
+
     // Clear previous messages
-    document.getElementById('passwordError').style.display = 'none';
-    document.getElementById('passwordSuccess').style.display = 'none';
-    
+    document.getElementById("passwordError").style.display = "none";
+    document.getElementById("passwordSuccess").style.display = "none";
+
     // Validate passwords match
     if (newPassword !== confirmNewPassword) {
-      showError('passwordError', 'New passwords do not match');
+      showError("passwordError", "New passwords do not match");
       return;
     }
-    
+
     // Validate password strength
     if (newPassword.length < 8) {
-      showError('passwordError', 'Password must be at least 8 characters');
+      showError("passwordError", "Password must be at least 8 characters");
       return;
     }
-    
+
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
-      showError('passwordError', 'Password must contain uppercase, lowercase, and number');
+      showError(
+        "passwordError",
+        "Password must contain uppercase, lowercase, and number"
+      );
       return;
     }
-    
-    const btn = document.getElementById('changePasswordBtn');
+
+    const btn = document.getElementById("changePasswordBtn");
     btn.disabled = true;
-    btn.textContent = 'Updating...';
-    
+    btn.textContent = "Updating...";
+
     try {
       // Call backend
       await api.changePassword(currentPassword, newPassword);
-      
+
       // Simulate API call (testing)
       //await new Promise(resolve => setTimeout(resolve, 1000));
-    
-      showSuccess('passwordSuccess', '✓ Password updated successfully!');
+
+      showSuccess("passwordSuccess", "✓ Password updated successfully!");
       form.reset();
-      
+
       showToast({
-        icon: '🔒',
-        type: 'success',
-        title: 'Password Changed',
-        message: 'Your password has been updated successfully'
+        icon: "🔒",
+        type: "success",
+        title: "Password Changed",
+        message: "Your password has been updated successfully",
       });
-      
     } catch (error) {
-      showError('passwordError', error.message || 'Failed to update password');
+      showError("passwordError", error.message || "Failed to update password");
     } finally {
       btn.disabled = false;
-      btn.textContent = '🔒 Update Password';
+      btn.textContent = "🔒 Update Password";
 
       await api.logout(); // Revoke token from db
-      
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
 
       setTimeout(() => {
-          window.location.href = '/login.html';
+        window.location.href = "/login.html";
       }, 5000);
     }
   });
@@ -232,64 +268,65 @@ function setupPasswordChangeListener() {
 
 // Delete Account
 function setupDeleteAccountListener() {
-  const deleteBtn = document.getElementById('deleteAccountBtn');
-  
-  deleteBtn.addEventListener('click', async () => {
+  const deleteBtn = document.getElementById("deleteAccountBtn");
+
+  deleteBtn.addEventListener("click", async () => {
     // First confirmation
     const firstConfirm = await showConfirm({
-      icon: '⚠️',
-      type: 'danger',
-      title: 'Delete Account?',
-      message: 'This will permanently delete your account and all your notes. This action cannot be undone.',
-      confirmText: 'Continue',
-      cancelText: 'Cancel'
+      icon: "⚠️",
+      type: "danger",
+      title: "Delete Account?",
+      message:
+        "This will permanently delete your account and all your notes. This action cannot be undone.",
+      confirmText: "Continue",
+      cancelText: "Cancel",
     });
-    
+
     if (!firstConfirm) return;
-    
+
     // Second confirmation with stronger warning
     const secondConfirm = await showConfirm({
-      icon: '🚨',
-      type: 'danger',
-      title: 'Are You Absolutely Sure?',
-      message: 'All your notes, data, and account will be permanently erased. There is NO way to recover your account after this.',
-      confirmText: 'Yes, Delete Everything',
-      cancelText: 'No, Keep My Account'
+      icon: "🚨",
+      type: "danger",
+      title: "Are You Absolutely Sure?",
+      message:
+        "All your notes, data, and account will be permanently erased. There is NO way to recover your account after this.",
+      confirmText: "Yes, Delete Everything",
+      cancelText: "No, Keep My Account",
     });
-    
+
     if (!secondConfirm) return;
-    
+
     try {
       deleteBtn.disabled = true;
-      deleteBtn.textContent = 'Deleting...';
-      
+      deleteBtn.textContent = "Deleting...";
+
       // In a real app: await api.deleteAccount();
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       showToast({
-        icon: '👋',
-        type: 'success',
-        title: 'Account Deleted',
-        message: 'Your account has been permanently deleted'
+        icon: "👋",
+        type: "success",
+        title: "Account Deleted",
+        message: "Your account has been permanently deleted",
       });
-      
+
       // Clear all data and redirect to homepage
       setTimeout(() => {
         localStorage.clear();
-        window.location.href = '/index.html';
+        window.location.href = "/index.html";
       }, 2000);
-      
     } catch (error) {
       showToast({
-        icon: '✗',
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to delete account'
+        icon: "✗",
+        type: "error",
+        title: "Error",
+        message: error.message || "Failed to delete account",
       });
       deleteBtn.disabled = false;
-      deleteBtn.textContent = 'Delete Account';
+      deleteBtn.textContent = "Delete Account";
     }
   });
 }
