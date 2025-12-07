@@ -6,9 +6,19 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "logs": "tail -f logs/combined.log"
+    "logs": "tail -f logs/combined.log",
+    "seed": "node src/scripts/seed.js",
+    "db:reset": "node src/scripts/db-utils.js reset",
+    "db:health": "node src/scripts/db-utils.js health",
+    "db:stats": "node src/scripts/db-utils.js stats",
+    "db:verify-rls": "node src/scripts/db-utils.js verify-rls",
+    "db:cleanup": "node src/scripts/db-utils.js cleanup"
   },
-  "keywords": ["security", "notes", "encryption"],
+  "keywords": [
+    "security",
+    "notes",
+    "encryption"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -24,6 +34,8 @@
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "pg": "^8.11.3",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"
