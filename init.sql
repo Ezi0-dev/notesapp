@@ -1,4 +1,16 @@
+-- =====================================================
+-- SECURITY SETUP: Application role creation
+-- =====================================================
+-- The Docker image creates POSTGRES_USER (notesuser) as SUPERUSER by default.
+-- The notesapp role is created by 00-create-app-role.sh (runs first)
+-- with password from DATABASE_URL environment variable.
+-- This ensures password is only stored in .env file, not hardcoded here.
+--
+-- Note: notesapp is created WITHOUT SUPERUSER and WITHOUT BYPASSRLS
+-- This ensures RLS policies are enforced for the application
+-- =====================================================
 -- Enable extensions
+-- =====================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- For additional encryption functions
 
@@ -177,18 +189,15 @@ CREATE INDEX IF NOT EXISTS idx_security_events_user_id ON security_events(user_i
 -- Covering index for share count queries (optimizes correlated subqueries)
 CREATE INDEX IF NOT EXISTS idx_note_shares_note_id_covering ON note_shares(note_id);
 
--- Composite indexes for common query patterns (with INCLUDE for covering indexes)
+-- Composite indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_friendships_user_status
-ON friendships(user_id, status)
-INCLUDE (friend_id, requested_at, accepted_at);
+ON friendships(user_id, status, friend_id, requested_at, accepted_at);
 
 CREATE INDEX IF NOT EXISTS idx_friendships_friend_status
-ON friendships(friend_id, status)
-INCLUDE (user_id, requested_at, accepted_at);
+ON friendships(friend_id, status, user_id, requested_at, accepted_at);
 
 CREATE INDEX IF NOT EXISTS idx_note_shares_shared_permission
-ON note_shares(shared_with_id, permission)
-INCLUDE (note_id, owner_id);
+ON note_shares(shared_with_id, permission, note_id, owner_id);
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_active
 ON refresh_tokens(user_id, expires_at)
@@ -199,17 +208,28 @@ ON security_events(severity, created_at DESC)
 WHERE NOT resolved;
 
 CREATE INDEX IF NOT EXISTS idx_notes_user_updated
-ON notes(user_id, updated_at DESC)
-WHERE deleted_at IS NULL
-INCLUDE (id, title, encrypted);
+ON notes(user_id, updated_at DESC, id, title, encrypted)
+WHERE deleted_at IS NULL;
 
 -- Enable Row Level Security
+-- FORCE applies RLS even to table owners (required for proper testing and security)
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notes FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE note_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE note_shares FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE friendships FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refresh_tokens FORCE ROW LEVEL SECURITY;
+
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs FORCE ROW LEVEL SECURITY;
 
 -- RLS Policies (examples - adjust based on your app's auth mechanism)
 -- Note: You'll need to set current_setting('app.user_id') in your application
@@ -263,36 +283,134 @@ CREATE POLICY notes_shared_update_policy ON notes
         )
     );
 
--- Note shares policies: Users can see shares they own or are shared with
-CREATE POLICY note_shares_access_policy ON note_shares
-    FOR ALL
+-- Note shares policies: Separate policies for each operation to allow proper sharing flow
+-- SELECT: Users can see shares they own or are shared with
+CREATE POLICY note_shares_select_policy ON note_shares
+    FOR SELECT
     USING (
         owner_id = current_setting('app.user_id', true)::UUID
         OR shared_with_id = current_setting('app.user_id', true)::UUID
     );
 
--- Friendships policies: Users can see friendships they're part of
-CREATE POLICY friendships_access_policy ON friendships
-    FOR ALL
+-- INSERT: Allow owners to create shares (owner_id must be current user)
+CREATE POLICY note_shares_insert_policy ON note_shares
+    FOR INSERT
+    WITH CHECK (owner_id = current_setting('app.user_id', true)::UUID);
+
+-- UPDATE: Allow owners to update shares
+CREATE POLICY note_shares_update_policy ON note_shares
+    FOR UPDATE
+    USING (owner_id = current_setting('app.user_id', true)::UUID)
+    WITH CHECK (owner_id = current_setting('app.user_id', true)::UUID);
+
+-- DELETE: Allow owners to delete shares, or users can remove shares they're part of
+CREATE POLICY note_shares_delete_policy ON note_shares
+    FOR DELETE
+    USING (
+        owner_id = current_setting('app.user_id', true)::UUID
+        OR shared_with_id = current_setting('app.user_id', true)::UUID
+    );
+
+-- Friendships policies: Separate policies for each operation to allow proper friend request flow
+-- SELECT: Users can see friendships they're part of
+CREATE POLICY friendships_select_policy ON friendships
+    FOR SELECT
     USING (
         user_id = current_setting('app.user_id', true)::UUID
         OR friend_id = current_setting('app.user_id', true)::UUID
     );
 
--- Notifications policies: Users can only see their own notifications
-CREATE POLICY notifications_owner_policy ON notifications
-    FOR ALL
+-- INSERT: Allow users to create friend requests where they are the requester (user_id)
+CREATE POLICY friendships_insert_policy ON friendships
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.user_id', true)::UUID);
+
+-- UPDATE: Users can update friendships they're part of (accepting requests)
+CREATE POLICY friendships_update_policy ON friendships
+    FOR UPDATE
+    USING (
+        user_id = current_setting('app.user_id', true)::UUID
+        OR friend_id = current_setting('app.user_id', true)::UUID
+    )
+    WITH CHECK (
+        user_id = current_setting('app.user_id', true)::UUID
+        OR friend_id = current_setting('app.user_id', true)::UUID
+    );
+
+-- DELETE: Users can delete friendships they're part of
+CREATE POLICY friendships_delete_policy ON friendships
+    FOR DELETE
+    USING (
+        user_id = current_setting('app.user_id', true)::UUID
+        OR friend_id = current_setting('app.user_id', true)::UUID
+    );
+
+-- Notifications policies: Separate policies to allow cross-user notification creation
+-- SELECT: Users can see their own notifications
+CREATE POLICY notifications_select_policy ON notifications
+    FOR SELECT
     USING (user_id = current_setting('app.user_id', true)::UUID);
 
--- Refresh tokens policies: Users can only see their own tokens
-CREATE POLICY refresh_tokens_owner_policy ON refresh_tokens
-    FOR ALL
+-- INSERT: Allow creating notifications for any user (controlled by application logic)
+CREATE POLICY notifications_insert_policy ON notifications
+    FOR INSERT
+    WITH CHECK (true);
+
+-- UPDATE: Users can only update their own notifications (marking as read)
+CREATE POLICY notifications_update_policy ON notifications
+    FOR UPDATE
+    USING (user_id = current_setting('app.user_id', true)::UUID)
+    WITH CHECK (user_id = current_setting('app.user_id', true)::UUID);
+
+-- DELETE: Users can only delete their own notifications
+CREATE POLICY notifications_delete_policy ON notifications
+    FOR DELETE
     USING (user_id = current_setting('app.user_id', true)::UUID);
+
+-- Refresh tokens policies: Split into separate operations for better control
+-- SELECT: Users can only see their own tokens
+CREATE POLICY refresh_tokens_select_policy ON refresh_tokens
+    FOR SELECT
+    USING (user_id = current_setting('app.user_id', true)::UUID);
+
+-- INSERT: Allow system operations (registration/login) when app.user_id is not set
+-- This enables executeAsSystem() to create tokens during registration
+CREATE POLICY refresh_tokens_insert_policy ON refresh_tokens
+    FOR INSERT
+    WITH CHECK (
+        current_setting('app.user_id', true) IS NULL
+        OR user_id = current_setting('app.user_id', true)::UUID
+    );
+
+-- UPDATE: Allow system operations to revoke tokens (logout, new login)
+CREATE POLICY refresh_tokens_update_policy ON refresh_tokens
+    FOR UPDATE
+    USING (
+        current_setting('app.user_id', true) IS NULL
+        OR user_id = current_setting('app.user_id', true)::UUID
+    )
+    WITH CHECK (
+        current_setting('app.user_id', true) IS NULL
+        OR user_id = current_setting('app.user_id', true)::UUID
+    );
+
+-- DELETE: Only allow if user_id matches (or system operation)
+CREATE POLICY refresh_tokens_delete_policy ON refresh_tokens
+    FOR DELETE
+    USING (
+        current_setting('app.user_id', true) IS NULL
+        OR user_id = current_setting('app.user_id', true)::UUID
+    );
 
 -- Audit logs policies: Users can read their own audit logs (read-only)
 CREATE POLICY audit_logs_read_policy ON audit_logs
     FOR SELECT
     USING (user_id = current_setting('app.user_id', true)::UUID);
+
+-- INSERT: Allow system to write audit logs (registration, login, etc.)
+CREATE POLICY audit_logs_insert_policy ON audit_logs
+    FOR INSERT
+    WITH CHECK (true);
 
 -- Functions
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -382,62 +500,80 @@ SET search_path = public, pg_temp;
 REVOKE ALL ON FUNCTION cleanup_old_rate_limits() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION cleanup_old_rate_limits() TO notesuser;
 
--- Monitoring Views
-CREATE OR REPLACE VIEW v_user_statistics AS
-SELECT
-    u.id,
-    u.username,
-    u.email,
-    u.created_at,
-    u.last_login,
-    COUNT(DISTINCT n.id) FILTER (WHERE n.deleted_at IS NULL) as note_count,
-    COUNT(DISTINCT ns.id) as shared_note_count,
-    COUNT(DISTINCT f.id) FILTER (WHERE f.status = 'accepted') as friend_count
-FROM users u
-LEFT JOIN notes n ON u.id = n.user_id
-LEFT JOIN note_shares ns ON u.id = ns.shared_with_id
-LEFT JOIN friendships f ON u.id = f.user_id OR u.id = f.friend_id
-WHERE u.deleted_at IS NULL
-GROUP BY u.id, u.username, u.email, u.created_at, u.last_login;
+-- =====================================================
+-- GRANT PERMISSIONS TO APPLICATION ROLE (notesapp)
+-- =====================================================
+-- Grant necessary database and schema access
+GRANT CONNECT ON DATABASE notesdb TO notesapp;
+GRANT USAGE ON SCHEMA public TO notesapp;
 
--- View: Table sizes and row counts
-CREATE OR REPLACE VIEW v_table_statistics AS
-SELECT
-    schemaname,
-    tablename,
-    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
-    pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) AS table_size,
-    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) - pg_relation_size(schemaname||'.'||tablename)) AS index_size,
-    n_live_tup as estimated_rows,
-    n_dead_tup as dead_rows,
-    last_vacuum,
-    last_autovacuum
-FROM pg_stat_user_tables
-ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+-- Grant table permissions (SELECT, INSERT, UPDATE, DELETE only - no DDL)
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO notesapp;
 
--- View: Security event summary
-CREATE OR REPLACE VIEW v_security_summary AS
-SELECT
-    event_type,
-    severity,
-    COUNT(*) as event_count,
-    COUNT(*) FILTER (WHERE NOT resolved) as unresolved_count,
-    MIN(created_at) as first_occurrence,
-    MAX(created_at) as last_occurrence
-FROM security_events
-WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '7 days'
-GROUP BY event_type, severity
-ORDER BY severity DESC, event_count DESC;
+-- Grant sequence permissions (for UUID generation and auto-increment columns)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO notesapp;
 
--- View: Index usage statistics
-CREATE OR REPLACE VIEW v_index_usage AS
-SELECT
-    schemaname,
-    tablename,
-    indexname,
-    idx_scan,
-    idx_tup_read,
-    idx_tup_fetch,
-    pg_size_pretty(pg_relation_size(indexrelid)) as index_size
-FROM pg_stat_user_indexes
-ORDER BY idx_scan ASC, pg_relation_size(indexrelid) DESC;
+-- Grant execute on specific maintenance functions
+GRANT EXECUTE ON FUNCTION cleanup_expired_tokens() TO notesapp;
+GRANT EXECUTE ON FUNCTION cleanup_old_rate_limits() TO notesapp;
+GRANT EXECUTE ON FUNCTION update_updated_at_column() TO notesapp;
+
+-- Set default privileges for future objects (in case tables are added later)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO notesapp;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO notesapp;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO notesapp;
+
+-- =====================================================
+-- SECURITY VERIFICATION
+-- =====================================================
+-- Verify notesapp doesn't have dangerous privileges
+DO $$
+DECLARE
+    v_super BOOLEAN;
+    v_bypassrls BOOLEAN;
+BEGIN
+    SELECT rolsuper, rolbypassrls INTO v_super, v_bypassrls
+    FROM pg_roles WHERE rolname = 'notesapp';
+
+    IF v_super OR v_bypassrls THEN
+        RAISE EXCEPTION 'SECURITY ERROR: notesapp has dangerous privileges (SUPERUSER: %, BYPASSRLS: %)', v_super, v_bypassrls;
+    ELSE
+        RAISE NOTICE '✓ Security check passed: notesapp role configured correctly';
+    END IF;
+END $$;
+
+-- Verify RLS is enabled on critical tables
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM pg_tables t
+    JOIN pg_class c ON t.tablename = c.relname
+    WHERE t.schemaname = 'public'
+    AND t.tablename IN ('notes', 'note_shares', 'friendships', 'notifications')
+    AND c.relrowsecurity = true
+    AND c.relforcerowsecurity = true;
+
+    IF v_count != 4 THEN
+        RAISE EXCEPTION 'SECURITY ERROR: RLS not enabled on all critical tables (enabled on % of 4)', v_count;
+    ELSE
+        RAISE NOTICE '✓ RLS verification passed: All critical tables have forced row security enabled';
+    END IF;
+END $$;
+
+-- Verify RLS policies exist
+DO $$
+DECLARE
+    v_policy_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_policy_count
+    FROM pg_policies
+    WHERE tablename IN ('notes', 'note_shares', 'friendships', 'notifications', 'refresh_tokens', 'audit_logs');
+
+    IF v_policy_count < 20 THEN
+        RAISE WARNING 'RLS policies may be incomplete (found % policies, expected 20+)', v_policy_count;
+    ELSE
+        RAISE NOTICE '✓ RLS policies verified: % policies found', v_policy_count;
+    END IF;
+END $$;
