@@ -2,12 +2,14 @@ const express = require('express');
 const { body, param } = require('express-validator');
 const { apiLimiter } = require('../middleware/rateLimiter');
 const { authenticate } = require('../middleware/auth');
+const { setRLSContext } = require('../middleware/rlsContext');
 const notesController = require('../controllers/notesController');
 
 const router = express.Router();
 
-// Apply authentication and rate limiting to all routes
+// Apply authentication, RLS context, and rate limiting to all routes
 router.use(authenticate);
+router.use(setRLSContext); // Set RLS context after authentication
 router.use(apiLimiter);
 
 // Validation rules

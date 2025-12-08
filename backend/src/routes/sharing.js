@@ -2,12 +2,14 @@ const express = require('express');
 const { body, param } = require('express-validator');
 const { apiLimiter } = require('../middleware/rateLimiter');
 const { authenticate } = require('../middleware/auth');
+const { setRLSContext } = require('../middleware/rlsContext');
 const sharingController = require('../controllers/sharingController');
 
 const router = express.Router();
 
-// Apply authentication and rate limiting to all routes
+// Apply authentication, RLS context, and rate limiting to all routes
 router.use(authenticate);
+router.use(setRLSContext);
 router.use(apiLimiter);
 
 // Validation rules
@@ -16,6 +18,9 @@ const shareValidation = [
     .isUUID()
     .withMessage('Invalid note ID'),
   body('friendId')
+    .trim()
+    .notEmpty()
+    .withMessage('Friend ID is required')
     .isUUID()
     .withMessage('Invalid friend ID'),
   body('permission')
