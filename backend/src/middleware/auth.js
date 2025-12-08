@@ -39,4 +39,20 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate };
+// Middleware to check admin role
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: { message: 'Authentication required' } });
+  }
+
+  if (req.user.role !== 'admin') {
+    logger.warn(`Access denied for non-admin user: ${req.user.username} (role: ${req.user.role})`);
+    return res.status(403).json({
+      error: { message: 'Admin access required' }
+    });
+  }
+
+  next();
+};
+
+module.exports = { authenticate, requireAdmin };

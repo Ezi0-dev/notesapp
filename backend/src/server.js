@@ -1,4 +1,8 @@
 require('dotenv').config();
+
+// Default to development if NODE_ENV not set
+process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,8 +18,10 @@ const notesRoutes = require('./routes/notes');
 const friendsRoutes = require('./routes/friends');
 const sharingRoutes = require('./routes/sharing');
 const notificationRoutes = require('./routes/notifications');
+const adminRoutes = require('./routes/admin');
 const { pool } = require('./config/database');
 const scheduler = require('./jobs/scheduler');
+const { setRLSContext } = require('./middleware/rlsContext');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +77,10 @@ app.use(hpp());
 // Custom security middleware
 app.use(securityMiddleware);
 
+// RLS Context Middleware - MUST be after security middleware
+// This sets the app.user_id context for Row-Level Security policies
+app.use(setRLSContext);
+
 // Static file serving for uploaded avatars with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:8080');
@@ -87,6 +97,9 @@ app.use('/api/notifications', notificationRoutes);
 // Freind sharing stuff
 app.use('/api/friends', friendsRoutes);
 app.use('/api/sharing', sharingRoutes);
+
+// Admin/testing routes
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -121,41 +134,53 @@ app.use((req, res) => {
   res.status(404).json({ error: { message: 'Route not found' } });
 });
 
+// Server instance for graceful shutdown
+let server;
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, closing server gracefully');
-  server.close(() => {
-    scheduler.stop();
-    pool.end();
-    logger.info('✓ Server shutdown complete');
-    process.exit(0);
-  });
+  if (server) {
+    server.close(() => {
+      scheduler.stop();
+      pool.end();
+      logger.info('✓ Server shutdown complete');
+      process.exit(0);
+    });
+  }
 });
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, closing server gracefully');
-  server.close(() => {
-    scheduler.stop();
-    pool.end();
-    logger.info('✓ Server shutdown complete');
-    process.exit(0);
-  });
-});
-
-// Start server
-const server = app.listen(PORT, '0.0.0.0', async () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`🔒 Security features enabled`);
-
-  try {
-    await pool.query('SELECT NOW()');
-    logger.info('✅ Database connected successfully');
-
-    // Start automated maintenance jobs
-    scheduler.start();
-    logger.info('✅ Scheduled maintenance jobs started');
-  } catch (err) {
-    logger.error('❌ Database connection failed:', err.message);
-    logger.error('⚠️  Scheduled jobs not started');
+  if (server) {
+    server.close(() => {
+      scheduler.stop();
+      pool.end();
+      logger.info('✓ Server shutdown complete');
+      process.exit(0);
+    });
   }
 });
+
+// Only start server if this file is run directly (not imported as a module)
+if (require.main === module) {
+  server = app.listen(PORT, '0.0.0.0', async () => {
+    logger.info(`🚀 Server running on port ${PORT}`);
+    logger.info(`🔒 Security features enabled`);
+
+    try {
+      await pool.query('SELECT NOW()');
+      logger.info('✅ Database connected successfully');
+
+      // Start automated maintenance jobs
+      scheduler.start();
+      logger.info('✅ Scheduled maintenance jobs started');
+    } catch (err) {
+      logger.error('❌ Database connection failed:', err.message);
+      logger.error('⚠️  Scheduled jobs not started');
+    }
+  });
+}
+
+// Export app for use in other modules
+module.exports = app;
