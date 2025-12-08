@@ -5,7 +5,7 @@ const { rateLimit: rateLimitConfig } = require('../config/security');
 const createRateLimiter = (max, windowMs = rateLimitConfig.windowMs, action = 'api') => {
   return async (req, res, next) => {
     const identifier = req.ip;
-    
+
     try {
       const now = new Date();
       

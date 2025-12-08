@@ -9,14 +9,14 @@ exports.changePassword = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
+      logger.warn('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { currentPassword, newPassword } = req.body;
     const userId = req.user.userId;
 
-    console.log('Password change attempt for user:', userId);
+    logger.info('Password change attempt for user:', userId);
 
     // Get user's current password hash
     const result = await pool.query(
@@ -25,16 +25,16 @@ exports.changePassword = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      console.log('User not found:', userId);
+      logger.warn('User not found:', userId);
       return res.status(404).json({ error: { message: 'User not found' } });
     }
 
     const user = result.rows[0];
-    console.log('Found user:', user.username);
+    logger.debug('Found user:', user.username);
 
     // Verify current password
     const isValidPassword = await argon2.verify(user.password_hash, currentPassword);
-    console.log('Current password valid:', isValidPassword);
+    logger.debug('Current password valid:', isValidPassword);
     
     if (!isValidPassword) {
       await auditLog(userId, 'PASSWORD_CHANGE_FAILED', false, req, { 
@@ -48,25 +48,25 @@ exports.changePassword = async (req, res) => {
     // Check if new password is same as old
     const isSamePassword = await argon2.verify(user.password_hash, newPassword);
     if (isSamePassword) {
-      console.log('New password same as old');
+      logger.debug('New password same as old');
       return res.status(400).json({
         error: { message: 'New password must be different from current password' }
       });
     }
 
     // Hash new password
-    console.log('Hashing new password...');
+    logger.debug('Hashing new password...');
     const newPasswordHash = await argon2.hash(newPassword);
 
     // Update password
-    console.log('Updating password in database...');
+    logger.debug('Updating password in database...');
     await pool.query(
       'UPDATE users SET password_hash = $1 WHERE id = $2',
       [newPasswordHash, userId]
     );
 
     // Revoke all refresh tokens (force re-login on all devices)
-    console.log('Revoking refresh tokens...');
+    logger.debug('Revoking refresh tokens...');
     await pool.query(
       'UPDATE refresh_tokens SET revoked = true WHERE user_id = $1',
       [userId]
@@ -75,13 +75,12 @@ exports.changePassword = async (req, res) => {
     await auditLog(userId, 'PASSWORD_CHANGED', true, req);
     logger.info(`Password changed for user ${userId} (${user.username})`);
 
-    console.log('Password change successful!');
+    logger.info('Password change successful!');
 
     res.json({
       message: 'Password changed successfully. Please login again with your new password.'
     });
   } catch (err) {
-    console.error('Change password error:', err);
     logger.error('Change password error:', err);
     res.status(500).json({ error: { message: 'Failed to change password' } });
   }

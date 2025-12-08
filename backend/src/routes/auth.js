@@ -27,11 +27,10 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body('email')
+  body('username')
     .trim()
-    .isEmail()
-    .withMessage('Must be a valid email address')
-    .normalizeEmail(),
+    .notEmpty()
+    .withMessage('Username is required'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
