@@ -1,12 +1,15 @@
 const { pool } = require('../config/database');
 const { logger } = require('../utils/logger');
 
+// Helper to get the correct database client (RLS-aware if available, otherwise pool)
+const getDbClient = (req) => req.dbClient || pool;
+
 // Get all notifications for the current user
 exports.getNotifications = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const result = await pool.query(
+    const result = await getDbClient(req).query(
       `SELECT n.id,
               n.user_id,
               n.type,
@@ -40,7 +43,7 @@ exports.markAsRead = async (req, res) => {
     const userId = req.user.userId;
     const { id } = req.params;
 
-    const result = await pool.query(
+    const result = await getDbClient(req).query(
       `UPDATE notifications
        SET is_read = TRUE
        WHERE id = $1 AND user_id = $2
@@ -69,7 +72,7 @@ exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    await pool.query(
+    await getDbClient(req).query(
       'UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE',
       [userId]
     );
@@ -90,7 +93,7 @@ exports.deleteNotification = async (req, res) => {
     const userId = req.user.userId;
     const { id } = req.params;
 
-    const result = await pool.query(
+    const result = await getDbClient(req).query(
       'DELETE FROM notifications WHERE id = $1 AND user_id = $2 RETURNING *',
       [id, userId]
     );

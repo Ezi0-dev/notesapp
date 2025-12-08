@@ -1,20 +1,21 @@
 const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
+const { executeAsSystem } = require('../middleware/rlsContext');
 const { validationResult } = require('express-validator');
 const { jwt: jwtConfig, lockout } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 
-const generateTokens = (userId, username) => {
+const generateTokens = (userId, username, role) => {
   const accessToken = jwt.sign(
-    { userId, username },
+    { userId, username, role },
     jwtConfig.accessSecret,
     { expiresIn: jwtConfig.accessTokenExpiry }
   );
 
   const refreshToken = jwt.sign(
-    { userId, username },
+    { userId, username, role },
     jwtConfig.refreshSecret,
     { expiresIn: jwtConfig.refreshTokenExpiry }
   );
@@ -46,21 +47,23 @@ exports.register = async (req, res) => {
     const passwordHash = await argon2.hash(password);
 
     const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, created_at',
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, role, created_at',
       [username, email, passwordHash]
     );
 
     const user = result.rows[0];
 
-    await pool.query(
-    'UPDATE refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false',
-    [user.id]
+    // Revoke existing refresh tokens (system operation)
+    await executeAsSystem(
+      'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $2 WHERE user_id = $1 AND revoked = false',
+      [user.id, 'new_registration']
     );
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.username);
+    const { accessToken, refreshToken } = generateTokens(user.id, user.username, user.role);
 
+    // Insert new refresh token (system operation)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await pool.query(
+    await executeAsSystem(
       'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [user.id, refreshToken, expiresAt]
     );
@@ -76,6 +79,7 @@ exports.register = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role,
         createdAt: user.created_at
       }
     });
@@ -96,9 +100,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Find user by username 
+    // Find user by username
     const result = await pool.query(
-      'SELECT id, username, email, password_hash, failed_login_attempts, account_locked_until FROM users WHERE username = $1',
+      'SELECT id, username, email, password_hash, role, failed_login_attempts, account_locked_until FROM users WHERE username = $1',
       [username]
     );
 
@@ -149,16 +153,16 @@ exports.login = async (req, res) => {
       [user.id]
     );
 
-    // Remove previous refresh tokens from DB
-    await pool.query(
-    'UPDATE refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false',
-    [user.id]
+    // Remove previous refresh tokens (system operation)
+    await executeAsSystem(
+      'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $2 WHERE user_id = $1 AND revoked = false',
+      [user.id, 'new_login']
     );
 
-    const { accessToken, refreshToken } = generateTokens(user.id, user.username);
+    const { accessToken, refreshToken } = generateTokens(user.id, user.username, user.role);
 
-    // Store refresh token
-    await pool.query(
+    // Store refresh token (system operation)
+    await executeAsSystem(
       'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [user.id, refreshToken, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
     );
@@ -173,7 +177,8 @@ exports.login = async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (err) {
@@ -192,7 +197,8 @@ exports.refreshToken = async (req, res) => {
 
     const decoded = jwt.verify(refreshToken, jwtConfig.refreshSecret);
 
-    const result = await pool.query(
+    // Check refresh token (system operation)
+    const result = await executeAsSystem(
       'SELECT user_id, expires_at, revoked FROM refresh_tokens WHERE token = $1',
       [refreshToken]
     );
@@ -207,7 +213,7 @@ exports.refreshToken = async (req, res) => {
       return res.status(401).json({ error: { message: 'Refresh token expired' } });
     }
 
-    const { accessToken } = generateTokens(decoded.userId, decoded.username);
+    const { accessToken } = generateTokens(decoded.userId, decoded.username, decoded.role);
     await auditLog(decoded.userId, 'TOKEN_REFRESHED', true, req);
 
     res.json({
@@ -225,9 +231,10 @@ exports.logout = async (req, res) => {
     const { refreshToken } = req.body;
 
     if (refreshToken) {
-      await pool.query(
-        'UPDATE refresh_tokens SET revoked = true WHERE token = $1',
-        [refreshToken]
+      // Revoke refresh token (system operation)
+      await executeAsSystem(
+        'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $2 WHERE token = $1',
+        [refreshToken, 'user_logout']
       );
     }
 
@@ -244,7 +251,7 @@ exports.logout = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, created_at, last_login FROM users WHERE id = $1',
+      'SELECT id, username, email, role, created_at, last_login, profile_picture FROM users WHERE id = $1',
       [req.user.userId]
     );
 

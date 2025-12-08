@@ -5,6 +5,9 @@ const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 const { logSecurityEvent } = require('../utils/securityLogger');
 
+// Helper to get the correct database client (RLS-aware if available, otherwise pool)
+const getDbClient = (req) => req.dbClient || pool;
+
 exports.createNote = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -55,29 +58,23 @@ exports.createNote = async (req, res) => {
       logger.info(`Note created without encryption for user ${userId}`);
     }
 
-    const result = await pool.query(
-      'INSERT INTO notes (user_id, title, content, encrypted) VALUES ($1, $2, $3, $4) RETURNING id, title, created_at, updated_at, encrypted',
+    const result = await getDbClient(req).query(
+      'INSERT INTO notes (user_id, title, content, encrypted) VALUES ($1, $2, $3, $4) RETURNING id, title, content, created_at, updated_at, encrypted',
       [userId, title, finalContent, encrypted]
     );
 
-    await auditLog(userId, 'NOTE_CREATED', true, req, { 
-      noteId: result.rows[0].id, 
-      title 
+    await auditLog(userId, 'NOTE_CREATED', true, req, {
+      noteId: result.rows[0].id,
+      title
     });
-    
+
     logger.info(`Note created successfully`, {
       userId,
       noteId: result.rows[0].id,
       encrypted
     });
 
-    res.status(201).json({
-      message: 'Note created successfully',
-      note: {
-        ...result.rows[0],
-        content: content
-      }
-    });
+    res.status(201).json(result.rows[0]);
     
   } catch (err) {
     logger.error('Create note error:', {
@@ -96,8 +93,23 @@ exports.getNotes = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const result = await pool.query(
-      'SELECT id, title, content, encrypted, created_at, updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC',
+    // Explicitly filter to user's OWN notes (not shared with them)
+    // RLS has both owner and shared policies, so we need explicit user_id filter
+    // Use LEFT JOIN with COUNT for better performance than correlated subquery
+    const result = await getDbClient(req).query(
+      `SELECT
+        n.id,
+        n.title,
+        n.content,
+        n.encrypted,
+        n.created_at,
+        n.updated_at,
+        COALESCE(COUNT(ns.id), 0)::INTEGER as share_count
+      FROM notes n
+      LEFT JOIN note_shares ns ON ns.note_id = n.id
+      WHERE n.deleted_at IS NULL AND n.user_id = $1
+      GROUP BY n.id, n.title, n.content, n.encrypted, n.created_at, n.updated_at
+      ORDER BY n.updated_at DESC`,
       [userId]
     );
 
@@ -118,9 +130,10 @@ exports.getNote = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
 
-    const result = await pool.query(
-      'SELECT id, title, content, encrypted, created_at, updated_at FROM notes WHERE id = $1 AND user_id = $2',
-      [id, userId]
+    // RLS automatically filters to authorized notes (own or shared)
+    const result = await getDbClient(req).query(
+      'SELECT id, user_id, title, content, encrypted, created_at, updated_at FROM notes WHERE id = $1 AND deleted_at IS NULL',
+      [id]
     );
 
     if (result.rows.length === 0) {
@@ -129,39 +142,38 @@ exports.getNote = async (req, res) => {
 
     const note = result.rows[0];
 
-    // AUTHORIZATION CHECK
-    if (note.user_id !== userId) {
-      // Log unauthorized access attempt
-      await logSecurityEvent(
-        'unauthorized_access',
-        'high',
-        userId,
-        req,
-        { 
-          resource: 'note',
-          noteId: id,
-          ownerId: note.user_id,
-          attemptedAction: 'read'
-        }
-      );
-
-      logger.warn('Unauthorized access attempt:', { 
-        userId, 
-        noteId: id, 
-        ownerId: note.user_id 
-      });
-
-      return res.status(403).json({ error: { message: 'Access denied' } });
-    }
-
-    // User is authorized - proceed with decryption if needed
+    // RLS policy already ensured user has access (own note or shared with them)
+    // Proceed with decryption if needed
     if (note.encrypted) {
       try {
         note.content = decrypt(note.content);
       } catch (decryptError) {
-        // ... (tampering detection code from above)
+        logger.error('Decryption failed - possible data tampering:', {
+          userId,
+          noteId: id,
+          error: decryptError.message
+        });
+
+        await logSecurityEvent(
+          'DECRYPTION_FAILURE',
+          'HIGH',
+          userId,
+          req,
+          {
+            noteId: id,
+            operation: 'GET_NOTE',
+            error: decryptError.message
+          }
+        );
+
+        return res.status(500).json({
+          error: { message: 'Failed to decrypt note - possible data corruption' }
+        });
       }
     }
+
+    // Don't expose user_id in response
+    delete note.user_id;
 
     res.json({ note });
     
@@ -220,23 +232,21 @@ exports.updateNote = async (req, res) => {
       finalContent = content;
     }
 
-    const result = await pool.query(
-      'UPDATE notes SET title = $1, content = $2, encrypted = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 AND user_id = $5 RETURNING id, title, created_at, updated_at, encrypted',
-      [title, finalContent, encrypted, id, userId]
+    // RLS automatically restricts to notes user can modify
+    const result = await getDbClient(req).query(
+      'UPDATE notes SET title = $1, content = $2, encrypted = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 AND deleted_at IS NULL RETURNING id, title, created_at, updated_at, encrypted',
+      [title, finalContent, encrypted, id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: { message: 'Note not found' } });
+      return res.status(404).json({ error: { message: 'Note not found or no permission' } });
     }
 
     await auditLog(userId, 'NOTE_UPDATED', true, req, { noteId: id, title });
 
     res.json({
-      message: 'Note updated successfully',
-      note: {
-        ...result.rows[0],
-        content: content
-      }
+      ...result.rows[0],
+      content: finalContent
     });
   } catch (err) {
     logger.error('Update note error:', err);
@@ -249,8 +259,8 @@ exports.deleteNote = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
 
-    // Check ownership first
-    const checkResult = await pool.query(
+    // Check if note exists (RLS will filter to user's notes)
+    const checkResult = await getDbClient(req).query(
       'SELECT user_id, title FROM notes WHERE id = $1',
       [id]
     );
@@ -283,9 +293,10 @@ exports.deleteNote = async (req, res) => {
       return res.status(403).json({ error: { message: 'Access denied' } });
     }
 
-    const result = await pool.query(
-      'DELETE FROM notes WHERE id = $1 AND user_id = $2 RETURNING id, title',
-      [id, userId]
+    // RLS restricts DELETE to owner only
+    const result = await getDbClient(req).query(
+      'DELETE FROM notes WHERE id = $1 RETURNING id, title',
+      [id]
     );
 
     if (result.rows.length === 0) {

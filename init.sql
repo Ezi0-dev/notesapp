@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_failed_login TIMESTAMP,
     account_locked_until TIMESTAMP,
     password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    role VARCHAR(20) DEFAULT 'user' NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     profile_picture VARCHAR(255),
@@ -32,7 +33,8 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT username_length CHECK (LENGTH(username) >= 3),
     CONSTRAINT valid_failed_attempts CHECK (failed_login_attempts >= 0 AND failed_login_attempts <= 100),
     CONSTRAINT valid_lock_time CHECK (account_locked_until IS NULL OR account_locked_until > last_failed_login),
-    CONSTRAINT valid_user_deletion CHECK (deleted_at IS NULL OR deleted_at >= created_at)
+    CONSTRAINT valid_user_deletion CHECK (deleted_at IS NULL OR deleted_at >= created_at),
+    CONSTRAINT valid_role CHECK (role IN ('user', 'admin', 'moderator'))
 );
 
 CREATE UNIQUE INDEX unique_lower_email ON users (LOWER(email)) WHERE deleted_at IS NULL;
@@ -135,7 +137,7 @@ CREATE TABLE IF NOT EXISTS security_events (
     details JSONB,
     resolved BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CHECK (severity IN ('low', 'medium', 'high', 'critical'))
+    CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'))
 );
 
 

@@ -2,39 +2,107 @@ const { pool } = require('../config/database');
 const { validationResult } = require('express-validator');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
+const { executeAsSystem } = require('../middleware/rlsContext');
+
+// Helper to get the correct database client (RLS-aware if available, otherwise pool)
+const getDbClient = (req) => req.dbClient || pool;
 
 // Send a friend request
 exports.sendFriendRequest = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            logger.warn('Friend request validation failed:', errors.array());
             return res.status(400).json({ errors: errors.array() });
         }
 
         const userId = req.user.userId;
-        const { friendUsername } = req.body;
+        const { friendUsername: friendUsernameFromBody, friendId: friendIdFromBody } = req.body;
 
-        // Find the friend by username
-        const friendResult = await pool.query(
-            'SELECT id, username FROM users WHERE username = $1',
-            [friendUsername]
-        );
+        logger.info('Friend request received', {
+            userId,
+            friendUsernameFromBody,
+            friendIdFromBody,
+            bodyKeys: Object.keys(req.body)
+        });
 
-        if (friendResult.rows.length === 0) {
-            return res.status(404).json({ error: { message: 'User not found' } });
+        // Additional safety check: ensure at least one is provided and not empty
+        // Handle both undefined and empty string cases
+        const hasFriendUsername = friendUsernameFromBody && typeof friendUsernameFromBody === 'string' && friendUsernameFromBody.trim().length > 0;
+        const hasFriendId = friendIdFromBody && typeof friendIdFromBody === 'string' && friendIdFromBody.trim().length > 0;
+
+        if (!hasFriendUsername && !hasFriendId) {
+            logger.warn('Friend request missing both username and ID', { userId });
+            return res.status(400).json({ error: { message: 'Either friendUsername or friendId is required' } });
         }
 
-        const friendId = friendResult.rows[0].id;
+        let friendId;
+        let friendUsername;
+
+        // Support both friendId and friendUsername for flexibility
+        if (hasFriendId) {
+            // Additional UUID format validation
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(friendIdFromBody.trim())) {
+                logger.warn('Invalid UUID format for friendId', { friendId: friendIdFromBody, userId });
+                return res.status(400).json({ error: { message: 'Invalid friend ID format' } });
+            }
+
+            // Find the friend by ID
+            const friendResult = await getDbClient(req).query(
+                'SELECT id, username FROM users WHERE id = $1',
+                [friendIdFromBody.trim()]
+            );
+
+            if (friendResult.rows.length === 0) {
+                return res.status(404).json({ error: { message: 'User not found' } });
+            }
+
+            friendId = friendResult.rows[0].id;
+            friendUsername = friendResult.rows[0].username;
+        } else if (hasFriendUsername) {
+            // Find the friend by username
+            const friendResult = await getDbClient(req).query(
+                'SELECT id, username FROM users WHERE username = $1',
+                [friendUsernameFromBody.trim()]
+            );
+
+            if (friendResult.rows.length === 0) {
+                return res.status(404).json({ error: { message: 'User not found' } });
+            }
+
+            friendId = friendResult.rows[0].id;
+            friendUsername = friendResult.rows[0].username;
+        } else {
+            return res.status(400).json({ error: { message: 'Either friendUsername or friendId is required' } });
+        }
+
+        logger.info('Friend lookup completed', {
+            userId,
+            friendId,
+            friendUsername,
+            friendIdType: typeof friendId,
+            friendIdLength: friendId ? friendId.length : 0
+        });
 
         // Can't friend yourself
         if (friendId === userId) {
             return res.status(400).json({ error: { message: 'Cannot send friend request to yourself' } });
         }
 
+        // Validate friendId is a proper UUID before querying
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!friendId || !uuidRegex.test(friendId)) {
+            logger.error('Invalid friendId after lookup', { friendId, userId });
+            return res.status(400).json({ error: { message: 'Invalid friend ID' } });
+        }
+
         // Check if friendship already exists (in either direction)
-        const existingFriendship = await pool.query(
-            `SELECT * FROM friendships 
-             WHERE (user_id = $1 AND friend_id = $2) 
+        // Use the RLS-enabled client - this will check friendships where current user is involved
+        logger.debug('Checking for existing friendship', { userId, friendId });
+        const existingFriendship = await getDbClient(req).query(
+            `SELECT * FROM friendships
+             WHERE (user_id = $1 AND friend_id = $2)
              OR (user_id = $2 AND friend_id = $1)`,
             [userId, friendId]
         );
@@ -48,23 +116,25 @@ exports.sendFriendRequest = async (req, res) => {
             }
         }
 
-        // Create friend request
-        const friendshipResult = await pool.query(
-            'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) RETURNING id',
+        // Create friend request using RLS-enabled client
+        // The RLS policy allows INSERT where user_id = current_setting('app.user_id')
+        const friendshipResult = await getDbClient(req).query(
+            'INSERT INTO friendships (user_id, friend_id, status) VALUES ($1, $2, $3) RETURNING *',
             [userId, friendId, 'pending']
         );
 
-        const friendshipId = friendshipResult.rows[0].id;
+        const friendship = friendshipResult.rows[0];
 
         // Create notification for the friend
+        // The RLS policy on notifications allows INSERT with WITH CHECK (true), so we can create notifications for any user
         const requesterUsername = req.user.username;
-        await pool.query(
+        await getDbClient(req).query(
             'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
             [
                 friendId,
                 'friend_request',
                 userId,
-                friendshipId,
+                friendship.id,
                 `${requesterUsername} sent you a friend request`
             ]
         );
@@ -72,12 +142,21 @@ exports.sendFriendRequest = async (req, res) => {
         await auditLog(userId, 'FRIEND_REQUEST_SENT', true, req, { friendId, friendUsername });
         logger.info(`Friend request sent by user ${userId} to user ${friendId}`);
 
-        res.status(201).json({
-            message: 'Friend request sent',
-            friend: { id: friendId, username: friendUsername }
-        });
+        res.status(201).json(friendship);
     } catch (err) {
         logger.error('Send friend request error:', err);
+
+        // Handle specific PostgreSQL errors
+        if (err.code === '22P02') {
+            logger.error('Invalid UUID format passed to database', { error: err.message });
+            return res.status(400).json({ error: { message: 'Invalid user ID format' } });
+        }
+
+        if (err.code === '23505') {
+            // Unique constraint violation - friendship already exists
+            return res.status(400).json({ error: { message: 'Friend request already exists' } });
+        }
+
         res.status(500).json({ error: { message: 'Failed to send friend request' } });
     }
 };
@@ -87,7 +166,7 @@ exports.getPendingRequests = async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT f.id, f.user_id, u.username, f.requested_at
              FROM friendships f
              JOIN users u ON f.user_id = u.id
@@ -109,6 +188,7 @@ exports.acceptFriendRequest = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            logger.warn('Accept friend request validation failed:', errors.array());
             return res.status(400).json({ errors: errors.array() });
         }
 
@@ -118,8 +198,15 @@ exports.acceptFriendRequest = async (req, res) => {
         const userId = req.user.userId;
         const { friendshipId } = req.params;
 
+        // Additional UUID format validation
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!friendshipId || !uuidRegex.test(friendshipId)) {
+            logger.warn('Invalid UUID format for friendshipId in acceptFriendRequest', { friendshipId, userId });
+            return res.status(400).json({ error: { message: 'Invalid friendship ID format' } });
+        }
+
         // Verify this request is for the current user
-        const friendship = await pool.query(
+        const friendship = await getDbClient(req).query(
             'SELECT * FROM friendships WHERE id = $1 AND friend_id = $2 AND status = $3',
             [friendshipId, userId, 'pending']
         );
@@ -131,23 +218,24 @@ exports.acceptFriendRequest = async (req, res) => {
         const requesterId = friendship.rows[0].user_id;
 
         // Update status to accepted
-        await pool.query(
-            'UPDATE friendships SET status = $1, accepted_at = CURRENT_TIMESTAMP WHERE id = $2',
+        const updateResult = await getDbClient(req).query(
+            'UPDATE friendships SET status = $1, accepted_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
             ['accepted', friendshipId]
         );
 
         // Mark the friend request notification as read
-        await pool.query(
-            `UPDATE notifications 
-             SET is_read = TRUE 
+        await getDbClient(req).query(
+            `UPDATE notifications
+             SET is_read = TRUE
              WHERE user_id = $1 AND type = 'friend_request' AND related_id = $2`,
             [userId, friendshipId]
         );
 
         // Create notification for requester that their request was accepted
+        // The RLS policy on notifications allows INSERT with WITH CHECK (true)
         const accepterUsername = req.user.username;
-        await pool.query(
-            `INSERT INTO notifications (user_id, type, from_user_id, related_id, message) 
+        await getDbClient(req).query(
+            `INSERT INTO notifications (user_id, type, from_user_id, related_id, message)
              VALUES ($1, $2, $3, $4, $5)`,
             [requesterId, 'friend_request', userId, friendshipId, `${accepterUsername} accepted your friend request!`]
         );
@@ -155,9 +243,16 @@ exports.acceptFriendRequest = async (req, res) => {
         await auditLog(userId, 'FRIEND_REQUEST_ACCEPTED', true, req, { friendshipId });
         logger.info(`Friend request ${friendshipId} accepted by user ${userId}`);
 
-        res.json({ message: 'Friend request accepted' });
+        res.json(updateResult.rows[0]);
     } catch (err) {
         logger.error('Accept friend request error:', err);
+
+        // Handle specific PostgreSQL errors
+        if (err.code === '22P02') {
+            logger.error('Invalid UUID format passed to database', { error: err.message });
+            return res.status(400).json({ error: { message: 'Invalid friendship ID format' } });
+        }
+
         res.status(500).json({ error: { message: 'Failed to accept friend request' } });
     }
 };
@@ -167,14 +262,22 @@ exports.rejectFriendRequest = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            logger.warn('Reject friend request validation failed:', errors.array());
             return res.status(400).json({ errors: errors.array() });
         }
 
         const userId = req.user.userId;
         const { friendshipId } = req.params;
 
+        // Additional UUID format validation
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!friendshipId || !uuidRegex.test(friendshipId)) {
+            logger.warn('Invalid UUID format for friendshipId in rejectFriendRequest', { friendshipId, userId });
+            return res.status(400).json({ error: { message: 'Invalid friendship ID format' } });
+        }
+
         // Verify and delete the request
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             'DELETE FROM friendships WHERE id = $1 AND friend_id = $2 AND status = $3',
             [friendshipId, userId, 'pending']
         );
@@ -184,7 +287,7 @@ exports.rejectFriendRequest = async (req, res) => {
         }
 
         // Delete notification
-        await pool.query(
+        await getDbClient(req).query(
             'DELETE FROM notifications WHERE user_id = $1 AND type = $2 AND related_id = $3',
             [userId, 'friend_request', friendshipId]
         );
@@ -195,6 +298,13 @@ exports.rejectFriendRequest = async (req, res) => {
         res.json({ message: 'Friend request rejected' });
     } catch (err) {
         logger.error('Reject friend request error:', err);
+
+        // Handle specific PostgreSQL errors
+        if (err.code === '22P02') {
+            logger.error('Invalid UUID format passed to database', { error: err.message });
+            return res.status(400).json({ error: { message: 'Invalid friendship ID format' } });
+        }
+
         res.status(500).json({ error: { message: 'Failed to reject friend request' } });
     }
 };
@@ -204,7 +314,7 @@ exports.getFriends = async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT DISTINCT
                 CASE 
                     WHEN f.user_id = $1 THEN f.friend_id
@@ -237,14 +347,24 @@ exports.removeFriend = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            logger.warn('Remove friend validation failed:', errors.array());
             return res.status(400).json({ errors: errors.array() });
         }
 
         const userId = req.user.userId;
         const { friendId } = req.params;
 
-        const result = await pool.query(
-            `DELETE FROM friendships 
+        // Additional UUID format validation
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!friendId || !uuidRegex.test(friendId)) {
+            logger.warn('Invalid UUID format for friendId in removeFriend', { friendId, userId });
+            return res.status(400).json({ error: { message: 'Invalid friend ID format' } });
+        }
+
+        // Delete friendship in either direction using RLS-enabled client
+        // The RLS policy allows DELETE where user is involved in the friendship
+        const result = await getDbClient(req).query(
+            `DELETE FROM friendships
              WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
              AND status = 'accepted'
              RETURNING id`,
@@ -258,18 +378,21 @@ exports.removeFriend = async (req, res) => {
         const friendshipId = result.rows[0].id;
 
         // Remove all note shares between these users (both directions)
-        await pool.query(
-            `DELETE FROM note_shares 
-             WHERE (owner_id = $1 AND shared_with_id = $2) 
+        // The RLS policy allows DELETE where user is owner or shared_with
+        await getDbClient(req).query(
+            `DELETE FROM note_shares
+             WHERE (owner_id = $1 AND shared_with_id = $2)
              OR (owner_id = $2 AND shared_with_id = $1)`,
             [userId, friendId]
         );
 
         // Delete notifications related to this friendship
-        await pool.query(
-            `DELETE FROM notifications 
-             WHERE related_id = $1 AND type IN ('friend_request', 'note_shared')`,
-            [friendshipId]
+        // The RLS policy only allows deleting own notifications, so we can only delete notifications for current user
+        // Notifications for the other user will remain (this is acceptable - they can see "User X removed you as friend")
+        await getDbClient(req).query(
+            `DELETE FROM notifications
+             WHERE user_id = $1 AND related_id = $2 AND type IN ('friend_request', 'note_shared')`,
+            [userId, friendshipId]
         );
 
         await auditLog(userId, 'FRIEND_REMOVED', true, req, { friendId });
@@ -278,6 +401,13 @@ exports.removeFriend = async (req, res) => {
         res.json({ message: 'Friend removed' });
     } catch (err) {
         logger.error('Remove friend error:', err);
+
+        // Handle specific PostgreSQL errors
+        if (err.code === '22P02') {
+            logger.error('Invalid UUID format passed to database', { error: err.message });
+            return res.status(400).json({ error: { message: 'Invalid friend ID format' } });
+        }
+
         res.status(500).json({ error: { message: 'Failed to remove friend' } });
     }
 };
@@ -293,7 +423,7 @@ exports.searchUsers = async (req, res) => {
         const userId = req.user.userId;
         const { username } = req.query;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT id, username 
              FROM users 
              WHERE username ILIKE $1 AND id != $2

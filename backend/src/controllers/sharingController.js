@@ -3,6 +3,10 @@ const { validationResult } = require('express-validator');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
+const { executeAsSystem } = require('../middleware/rlsContext');
+
+// Helper to get the correct database client (RLS-aware if available, otherwise pool)
+const getDbClient = (req) => req.dbClient || pool;
 
 // Share a note with a friend
 exports.shareNote = async (req, res) => {
@@ -14,10 +18,39 @@ exports.shareNote = async (req, res) => {
 
         const userId = req.user.userId;
         const { noteId } = req.params;
-        const { friendId, permission = 'read' } = req.body;
+        const { friendId: friendIdFromBody, permission = 'read' } = req.body;
+
+        // Additional validation: ensure noteId is not empty before proceeding
+        if (!noteId || noteId.trim().length === 0) {
+            logger.warn('Share note missing noteId', { userId, noteId });
+            return res.status(400).json({ error: { message: 'Note ID is required' } });
+        }
+
+        // Validate noteId format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(noteId)) {
+            logger.warn('Invalid UUID format for noteId in shareNote', { noteId, userId });
+            return res.status(400).json({ error: { message: 'Invalid note ID format' } });
+        }
+
+        // Additional safety check: ensure friendId is provided and not empty
+        const hasFriendId = friendIdFromBody && typeof friendIdFromBody === 'string' && friendIdFromBody.trim().length > 0;
+
+        if (!hasFriendId) {
+            logger.warn('Share note missing friendId', { userId, noteId });
+            return res.status(400).json({ error: { message: 'Friend ID is required' } });
+        }
+
+        const friendId = friendIdFromBody.trim();
+
+        // Additional UUID format validation
+        if (!uuidRegex.test(friendId)) {
+            logger.warn('Invalid UUID format for friendId in shareNote', { friendId, userId, noteId });
+            return res.status(400).json({ error: { message: 'Invalid friend ID format' } });
+        }
 
         // Verify user owns the note
-        const noteResult = await pool.query(
+        const noteResult = await getDbClient(req).query(
             'SELECT * FROM notes WHERE id = $1 AND user_id = $2',
             [noteId, userId]
         );
@@ -27,7 +60,7 @@ exports.shareNote = async (req, res) => {
         }
 
         // Verify they are friends
-        const friendshipResult = await pool.query(
+        const friendshipResult = await getDbClient(req).query(
             `SELECT * FROM friendships 
              WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
              AND status = 'accepted'`,
@@ -39,7 +72,7 @@ exports.shareNote = async (req, res) => {
         }
 
         // Check if already shared
-        const existingShare = await pool.query(
+        const existingShare = await getDbClient(req).query(
             'SELECT * FROM note_shares WHERE note_id = $1 AND shared_with_id = $2',
             [noteId, friendId]
         );
@@ -49,17 +82,18 @@ exports.shareNote = async (req, res) => {
         }
 
         // Create share
-        await pool.query(
+        await getDbClient(req).query(
             'INSERT INTO note_shares (note_id, owner_id, shared_with_id, permission) VALUES ($1, $2, $3, $4)',
             [noteId, userId, friendId, permission]
         );
 
         // Create notification for the friend
         const note = noteResult.rows[0];
-        const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const ownerResult = await getDbClient(req).query('SELECT username FROM users WHERE id = $1', [userId]);
         const ownerUsername = ownerResult.rows[0].username;
 
-        await pool.query(
+        // Use system privileges to insert notification for another user (friendId, not current user)
+        await executeAsSystem(
             'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
             [
                 friendId,
@@ -76,6 +110,18 @@ exports.shareNote = async (req, res) => {
         res.status(201).json({ message: 'Note shared successfully' });
     } catch (err) {
         logger.error('Share note error:', err);
+
+        // Handle specific PostgreSQL errors
+        if (err.code === '22P02') {
+            logger.error('Invalid UUID format passed to database', { error: err.message });
+            return res.status(400).json({ error: { message: 'Invalid user ID format' } });
+        }
+
+        if (err.code === '23505') {
+            // Unique constraint violation - share already exists
+            return res.status(400).json({ error: { message: 'Note already shared with this user' } });
+        }
+
         res.status(500).json({ error: { message: 'Failed to share note' } });
     }
 };
@@ -92,12 +138,12 @@ exports.unshareNote = async (req, res) => {
         const { noteId, friendId } = req.params;
 
         // Get note details before deleting the share
-        const noteResult = await pool.query(
+        const noteResult = await getDbClient(req).query(
             'SELECT title FROM notes WHERE id = $1',
             [noteId]
         );
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             'DELETE FROM note_shares WHERE note_id = $1 AND owner_id = $2 AND shared_with_id = $3',
             [noteId, userId, friendId]
         );
@@ -109,10 +155,11 @@ exports.unshareNote = async (req, res) => {
         // Create notification for the friend
         if (noteResult.rows.length > 0) {
             const noteTitle = noteResult.rows[0].title;
-            const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+            const ownerResult = await getDbClient(req).query('SELECT username FROM users WHERE id = $1', [userId]);
             const ownerUsername = ownerResult.rows[0].username;
 
-            await pool.query(
+            // Use system privileges to insert notification for another user
+            await executeAsSystem(
                 'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
                 [
                     friendId,
@@ -139,7 +186,7 @@ exports.getSharedWithMe = async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT 
                 n.id, 
                 n.title, 
@@ -192,7 +239,7 @@ exports.getSharedNote = async (req, res) => {
         const userId = req.user.userId;
         const noteId = req.params.id;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT 
                 n.id, 
                 n.title, 
@@ -245,7 +292,7 @@ exports.getNoteShares = async (req, res) => {
         const { noteId } = req.params;
 
         // Verify user owns the note
-        const noteResult = await pool.query(
+        const noteResult = await getDbClient(req).query(
             'SELECT * FROM notes WHERE id = $1 AND user_id = $2',
             [noteId, userId]
         );
@@ -255,7 +302,7 @@ exports.getNoteShares = async (req, res) => {
         }
 
         // Get all shares for this note
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             `SELECT 
                 ns.id,
                 ns.shared_with_id,
@@ -290,7 +337,7 @@ exports.updateSharePermission = async (req, res) => {
         const { permission } = req.body;
 
         // Get note details before updating
-        const noteResult = await pool.query(
+        const noteResult = await getDbClient(req).query(
             'SELECT title FROM notes WHERE id = $1',
             [noteId]
         );
@@ -299,7 +346,7 @@ exports.updateSharePermission = async (req, res) => {
             return res.status(404).json({ error: { message: 'Note not found' } });
         }
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             'UPDATE note_shares SET permission = $1 WHERE note_id = $2 AND owner_id = $3 AND shared_with_id = $4',
             [permission, noteId, userId, friendId]
         );
@@ -310,10 +357,11 @@ exports.updateSharePermission = async (req, res) => {
 
         // Create notification for the friend
         const noteTitle = noteResult.rows[0].title;
-        const ownerResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const ownerResult = await getDbClient(req).query('SELECT username FROM users WHERE id = $1', [userId]);
         const ownerUsername = ownerResult.rows[0].username;
 
-        await pool.query(
+        // Use system privileges to insert notification for another user
+        await executeAsSystem(
             'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
             [
                 friendId,
@@ -341,7 +389,7 @@ exports.leaveSharedNote = async (req, res) => {
         const { noteId } = req.params;
 
         // Get share and note details before deleting
-        const shareResult = await pool.query(
+        const shareResult = await getDbClient(req).query(
             `SELECT ns.owner_id, n.title
              FROM note_shares ns
              JOIN notes n ON ns.note_id = n.id
@@ -356,16 +404,17 @@ exports.leaveSharedNote = async (req, res) => {
         const ownerId = shareResult.rows[0].owner_id;
         const noteTitle = shareResult.rows[0].title;
 
-        const result = await pool.query(
+        const result = await getDbClient(req).query(
             'DELETE FROM note_shares WHERE note_id = $1 AND shared_with_id = $2',
             [noteId, userId]
         );
 
         // Create notification for the owner
-        const leaverResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const leaverResult = await getDbClient(req).query('SELECT username FROM users WHERE id = $1', [userId]);
         const leaverUsername = leaverResult.rows[0].username;
 
-        await pool.query(
+        // Use system privileges to insert notification for another user (ownerId)
+        await executeAsSystem(
             'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
             [
                 ownerId,
@@ -400,7 +449,7 @@ exports.updateSharedNote = async (req, res) => {
         const { title, content } = req.body;
 
         // Check if user has write permission
-        const shareResult = await pool.query(
+        const shareResult = await getDbClient(req).query(
             'SELECT * FROM note_shares WHERE note_id = $1 AND shared_with_id = $2 AND permission = $3',
             [noteId, userId, 'write']
         );
@@ -410,7 +459,7 @@ exports.updateSharedNote = async (req, res) => {
         }
 
         // Get note to check if it's encrypted
-        const noteResult = await pool.query(
+        const noteResult = await getDbClient(req).query(
             'SELECT encrypted FROM notes WHERE id = $1',
             [noteId]
         );
@@ -433,7 +482,7 @@ exports.updateSharedNote = async (req, res) => {
             }
         }
 
-        await pool.query(
+        await getDbClient(req).query(
             'UPDATE notes SET title = $1, content = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
             [title, finalContent, noteId]
         );
