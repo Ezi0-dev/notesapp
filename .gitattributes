@@ -1,0 +1,8 @@
+# Ensure shell scripts always use LF line endings, even on Windows
+*.sh text eol=lf
+
+# Ensure init scripts use LF
+*.sql text eol=lf
+
+# Default behavior: let Git handle line endings automatically
+* text=auto

@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config();
+
 const argon2 = require('argon2');
 const { pool } = require('./src/config/database');
 
