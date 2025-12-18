@@ -1,11 +1,14 @@
 // backend/src/controllers/profileController.js
 const argon2 = require('argon2');
 const { pool } = require('../config/database');
+const { executeAsSystem } = require('../middleware/rlsContext');
 const { validationResult } = require('express-validator');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 
 exports.changePassword = async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -19,7 +22,7 @@ exports.changePassword = async (req, res) => {
     logger.info('Password change attempt for user:', userId);
 
     // Get user's current password hash
-    const result = await pool.query(
+    const result = await client.query(
       'SELECT password_hash, username FROM users WHERE id = $1',
       [userId]
     );
@@ -35,13 +38,13 @@ exports.changePassword = async (req, res) => {
     // Verify current password
     const isValidPassword = await argon2.verify(user.password_hash, currentPassword);
     logger.debug('Current password valid:', isValidPassword);
-    
+
     if (!isValidPassword) {
-      await auditLog(userId, 'PASSWORD_CHANGE_FAILED', false, req, { 
-        reason: 'Invalid current password' 
+      await auditLog(userId, 'PASSWORD_CHANGE_FAILED', false, req, {
+        reason: 'Invalid current password'
       });
-      return res.status(401).json({ 
-        error: { message: 'Current password is incorrect' } 
+      return res.status(401).json({
+        error: { message: 'Current password is incorrect' }
       });
     }
 
@@ -58,24 +61,34 @@ exports.changePassword = async (req, res) => {
     logger.debug('Hashing new password...');
     const newPasswordHash = await argon2.hash(newPassword);
 
-    // Update password
-    logger.debug('Updating password in database...');
-    await pool.query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [newPasswordHash, userId]
-    );
+    // Start transaction - all or nothing
+    await client.query('BEGIN');
 
-    // Revoke all refresh tokens (force re-login on all devices)
-    logger.debug('Revoking refresh tokens...');
-    await pool.query(
-      'UPDATE refresh_tokens SET revoked = true WHERE user_id = $1',
-      [userId]
-    );
+    try {
+      // Update password
+      logger.debug('Updating password in database...');
+      await client.query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [newPasswordHash, userId]
+      );
+
+      // Revoke all refresh tokens (force re-login on all devices)
+      logger.debug('Revoking refresh tokens...');
+      await client.query(
+        'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $2 WHERE user_id = $1',
+        [userId, 'password_changed']
+      );
+
+      await client.query('COMMIT');
+      logger.debug('Transaction committed successfully');
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      logger.error('Transaction failed, rolled back:', txError);
+      throw txError;
+    }
 
     await auditLog(userId, 'PASSWORD_CHANGED', true, req);
     logger.info(`Password changed for user ${userId} (${user.username})`);
-
-    logger.info('Password change successful!');
 
     res.json({
       message: 'Password changed successfully. Please login again with your new password.'
@@ -83,6 +96,8 @@ exports.changePassword = async (req, res) => {
   } catch (err) {
     logger.error('Change password error:', err);
     res.status(500).json({ error: { message: 'Failed to change password' } });
+  } finally {
+    client.release();
   }
 };
 

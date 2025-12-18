@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { jwt: jwtConfig } = require('../config/security');
 const { logger } = require('../utils/logger');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -29,6 +30,17 @@ const authenticate = async (req, res, next) => {
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError') {
+      // Log invalid/tampered token as security event
+      await logSecurityEvent(
+        'INVALID_TOKEN_DETECTED',
+        'HIGH',
+        null, // userId unknown since token is invalid
+        req,
+        {
+          tokenError: err.message,
+          endpoint: req.path
+        }
+      );
       return res.status(401).json({ error: { message: 'Invalid token' } });
     }
     if (err.name === 'TokenExpiredError') {

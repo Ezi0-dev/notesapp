@@ -6,6 +6,7 @@ const { validationResult } = require('express-validator');
 const { jwt: jwtConfig, lockout } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 const generateTokens = (userId, username, role) => {
   const accessToken = jwt.sign(
@@ -52,6 +53,12 @@ exports.register = async (req, res) => {
     );
 
     const user = result.rows[0];
+
+    // Validate user.id before using it
+    if (!user.id || user.id === '') {
+      logger.error('Registration failed: Invalid user ID returned from database');
+      return res.status(500).json({ error: { message: 'Registration failed' } });
+    }
 
     // Revoke existing refresh tokens (system operation)
     await executeAsSystem(
@@ -133,6 +140,19 @@ exports.login = async (req, res) => {
 
       if (newFailedAttempts >= lockout.maxAttempts) {
         accountLockedUntil = new Date(Date.now() + lockout.lockoutTime); // Fixed for easier configuring
+
+        // Log account lockout as a security event
+        await logSecurityEvent(
+          'ACCOUNT_LOCKOUT',
+          'MEDIUM',
+          user.id,
+          req,
+          {
+            reason: 'excessive_failed_logins',
+            attemptCount: newFailedAttempts,
+            lockedUntil: accountLockedUntil
+          }
+        );
       }
 
       await pool.query(
@@ -147,13 +167,23 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Validate user.id before using it
+    logger.debug('Login validation check:', { userId: user.id, type: typeof user.id, length: user.id?.length });
+    if (!user.id || user.id === '') {
+      logger.error('Login failed: Invalid user ID from database');
+      return res.status(500).json({ error: { message: 'Login failed' } });
+    }
+
     // Reset failed login attempts on successful login
+    logger.debug('About to reset failed attempts for user:', { userId: user.id });
     await pool.query(
       'UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL, last_login = CURRENT_TIMESTAMP WHERE id = $1',
       [user.id]
     );
+    logger.debug('After pool.query, user.id is:', { userId: user.id, type: typeof user.id });
 
     // Remove previous refresh tokens (system operation)
+    logger.debug('About to executeAsSystem for refresh tokens:', { userId: user.id, type: typeof user.id });
     await executeAsSystem(
       'UPDATE refresh_tokens SET revoked = true, revoked_at = NOW(), revoked_reason = $2 WHERE user_id = $1 AND revoked = false',
       [user.id, 'new_login']

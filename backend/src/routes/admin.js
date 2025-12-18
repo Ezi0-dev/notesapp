@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const scheduler = require('../jobs/scheduler');
 const DatabaseMaintenance = require('../utils/maintenance');
+const { pool } = require('../config/database');
 
 /**
  * Admin Routes for Testing & Maintenance
@@ -87,6 +88,112 @@ router.get('/health/bloat', authenticate, requireAdmin, async (req, res) => {
       success: result.success,
       bloatedTables: result.bloatedTables,
       recommendation: result.recommendation
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get security events with filtering
+router.get('/security-events', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const {
+      severity,
+      resolved,
+      limit = 50,
+      offset = 0,
+      startDate,
+      endDate
+    } = req.query;
+
+    // Build WHERE clause dynamically
+    const conditions = [];
+    const params = [];
+    let paramCounter = 1;
+
+    // Filter by severity
+    if (severity) {
+      conditions.push(`severity = $${paramCounter}`);
+      params.push(severity.toUpperCase());
+      paramCounter++;
+    }
+
+    // Filter by resolved status
+    if (resolved !== undefined) {
+      conditions.push(`resolved = $${paramCounter}`);
+      params.push(resolved === 'true');
+      paramCounter++;
+    }
+
+    // Filter by date range
+    if (startDate) {
+      conditions.push(`created_at >= $${paramCounter}`);
+      params.push(new Date(startDate));
+      paramCounter++;
+    }
+
+    if (endDate) {
+      conditions.push(`created_at <= $${paramCounter}`);
+      params.push(new Date(endDate));
+      paramCounter++;
+    }
+
+    // Construct WHERE clause
+    const whereClause = conditions.length > 0
+      ? `WHERE ${conditions.join(' AND ')}`
+      : '';
+
+    // Validate and cap limit
+    const safeLimit = Math.min(parseInt(limit) || 50, 100);
+    const safeOffset = parseInt(offset) || 0;
+
+    // Query with count using window function (efficient single query)
+    const query = `
+      SELECT
+        id,
+        event_type,
+        severity,
+        user_id,
+        ip_address,
+        details,
+        resolved,
+        created_at,
+        COUNT(*) OVER() as total_count
+      FROM security_events
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
+    `;
+
+    params.push(safeLimit, safeOffset);
+
+    const result = await pool.query(query, params);
+
+    const events = result.rows.map(row => ({
+      id: row.id,
+      eventType: row.event_type,
+      severity: row.severity,
+      userId: row.user_id,
+      ipAddress: row.ip_address,
+      details: row.details,
+      resolved: row.resolved,
+      createdAt: row.created_at
+    }));
+
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
+
+    res.json({
+      success: true,
+      events,
+      total,
+      pagination: {
+        limit: safeLimit,
+        offset: safeOffset,
+        hasMore: safeOffset + events.length < total
+      }
     });
   } catch (error) {
     res.status(500).json({

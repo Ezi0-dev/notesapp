@@ -4,6 +4,7 @@ const { encrypt, decrypt } = require('../utils/encryption');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 const { executeAsSystem } = require('../middleware/rlsContext');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 // Helper to get the correct database client (RLS-aware if available, otherwise pool)
 const getDbClient = (req) => req.dbClient || pool;
@@ -56,6 +57,27 @@ exports.shareNote = async (req, res) => {
         );
 
         if (noteResult.rows.length === 0) {
+            // Check if note exists to distinguish between not found vs unauthorized
+            const noteExists = await getDbClient(req).query(
+                'SELECT user_id FROM notes WHERE id = $1',
+                [noteId]
+            );
+
+            if (noteExists.rows.length > 0) {
+                // Note exists but user doesn't own it - log security event
+                await logSecurityEvent(
+                    'UNAUTHORIZED_SHARE_ATTEMPT',
+                    'HIGH',
+                    userId,
+                    req,
+                    {
+                        noteId,
+                        actualOwnerId: noteExists.rows[0].user_id,
+                        attemptedShareWithUserId: friendId
+                    }
+                );
+            }
+
             return res.status(404).json({ error: { message: 'Note not found or unauthorized' } });
         }
 
@@ -303,10 +325,11 @@ exports.getNoteShares = async (req, res) => {
 
         // Get all shares for this note
         const result = await getDbClient(req).query(
-            `SELECT 
+            `SELECT
                 ns.id,
                 ns.shared_with_id,
                 u.username,
+                u.profile_picture,
                 ns.permission,
                 ns.shared_at
              FROM note_shares ns
@@ -455,6 +478,28 @@ exports.updateSharedNote = async (req, res) => {
         );
 
         if (shareResult.rows.length === 0) {
+            // Check if user has any permission (read-only) to distinguish escalation from no access
+            const anyPermission = await getDbClient(req).query(
+                'SELECT permission, owner_id FROM note_shares WHERE note_id = $1 AND shared_with_id = $2',
+                [noteId, userId]
+            );
+
+            if (anyPermission.rows.length > 0) {
+                // User has read permission but tried to write - permission escalation attempt
+                await logSecurityEvent(
+                    'PERMISSION_ESCALATION_ATTEMPT',
+                    'CRITICAL',
+                    userId,
+                    req,
+                    {
+                        noteId,
+                        currentPermission: anyPermission.rows[0].permission,
+                        attemptedAction: 'update_note',
+                        ownerId: anyPermission.rows[0].owner_id
+                    }
+                );
+            }
+
             return res.status(403).json({ error: { message: 'No write permission for this note' } });
         }
 

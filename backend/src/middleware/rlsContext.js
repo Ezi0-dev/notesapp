@@ -174,21 +174,18 @@ const setRLSContext = async (req, res, next) => {
 };
 
 /**
- * Execute a query without RLS restrictions
+ * Execute a query with system-level privileges
  *
- * IMPORTANT: This function bypasses RLS by using a connection without app.user_id set.
- * It should ONLY be used for:
- * - Cross-user operations (friendships involving two users)
- * - System notifications (creating notifications for other users)
- * - Audit logging
- * - Cleanup operations
+ * SECURITY: This function uses a special system UUID (00000000-0000-0000-0000-000000000000)
+ * that RLS policies explicitly allow for specific operations.
  *
- * The RLS policies on friendships and notifications tables have been modified to:
- * - friendships: Allow INSERT where user_id = current_setting('app.user_id')
- * - notifications: Allow INSERT for any user (WITH CHECK true)
+ * Allowed operations:
+ * - refresh_tokens: SELECT, INSERT, UPDATE, DELETE (managing user sessions)
+ * - audit_logs: SELECT, INSERT (security logging)
+ * - notifications: INSERT (cross-user notifications)
  *
- * However, when pool.query() is called without app.user_id set, current_setting() returns NULL,
- * and the policies will fail. We need to set app.user_id even for system operations.
+ * IMPORTANT: Do NOT use pool.query() directly for these operations - it will FAIL.
+ * Always use executeAsSystem() to ensure proper security context.
  *
  * @param {string} query - SQL query
  * @param {Array} params - Query parameters
@@ -200,14 +197,22 @@ const executeAsSystem = async (query, params = []) => {
   try {
     await client.query('BEGIN');
 
-    // Don't set app.user_id - this allows the query to run without RLS context
-    // But RLS policies are still enforced. The policies need to be written to allow
-    // operations without app.user_id for system operations.
-    // For now, we'll set it to a special system UUID to bypass the policies
-    // Note: This is a workaround. Better solution is to have BYPASSRLS privilege
-    // or use SECURITY DEFINER functions in PostgreSQL.
+    // Debug: Log what we're about to execute
+    logger.debug('executeAsSystem called with:', {
+      query: query.substring(0, 100),
+      params: params,
+      paramTypes: params.map(p => typeof p),
+      paramLengths: params.map(p => p?.length || 'N/A')
+    });
 
-    // Execute the query directly without RLS context
+    // Set system UUID for operations that need to bypass user-level RLS
+    // This is a security-hardened approach: RLS policies explicitly allow this UUID
+    // for specific operations (creating tokens, audit logs, notifications).
+    // If app.user_id is not set, queries will FAIL instead of silently bypassing security.
+    const SYSTEM_UUID = '00000000-0000-0000-0000-000000000000';
+    await client.query(`SET LOCAL app.user_id = '${SYSTEM_UUID}'`);
+
+    // Execute the query with system privileges
     const result = await client.query(query, params);
 
     await client.query('COMMIT');

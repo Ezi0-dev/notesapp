@@ -125,10 +125,10 @@ exports.sendFriendRequest = async (req, res) => {
 
         const friendship = friendshipResult.rows[0];
 
-        // Create notification for the friend
-        // The RLS policy on notifications allows INSERT with WITH CHECK (true), so we can create notifications for any user
+        // Create notification for the friend using system privileges
+        // RLS policy requires system context for cross-user notification inserts
         const requesterUsername = req.user.username;
-        await getDbClient(req).query(
+        await executeAsSystem(
             'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
             [
                 friendId,
@@ -167,7 +167,7 @@ exports.getPendingRequests = async (req, res) => {
         const userId = req.user.userId;
 
         const result = await getDbClient(req).query(
-            `SELECT f.id, f.user_id, u.username, f.requested_at
+            `SELECT f.id, f.user_id, u.username, u.profile_picture, f.requested_at
              FROM friendships f
              JOIN users u ON f.user_id = u.id
              WHERE f.friend_id = $1 AND f.status = 'pending'
@@ -231,10 +231,10 @@ exports.acceptFriendRequest = async (req, res) => {
             [userId, friendshipId]
         );
 
-        // Create notification for requester that their request was accepted
-        // The RLS policy on notifications allows INSERT with WITH CHECK (true)
+        // Create notification for requester that their request was accepted using system privileges
+        // RLS policy requires system context for cross-user notification inserts
         const accepterUsername = req.user.username;
-        await getDbClient(req).query(
+        await executeAsSystem(
             `INSERT INTO notifications (user_id, type, from_user_id, related_id, message)
              VALUES ($1, $2, $3, $4, $5)`,
             [requesterId, 'friend_request', userId, friendshipId, `${accepterUsername} accepted your friend request!`]
@@ -316,15 +316,16 @@ exports.getFriends = async (req, res) => {
 
         const result = await getDbClient(req).query(
             `SELECT DISTINCT
-                CASE 
+                CASE
                     WHEN f.user_id = $1 THEN f.friend_id
                     ELSE f.user_id
                 END as friend_id,
                 u.username,
+                u.profile_picture,
                 f.accepted_at
              FROM friendships f
              JOIN users u ON (
-                 CASE 
+                 CASE
                      WHEN f.user_id = $1 THEN f.friend_id
                      ELSE f.user_id
                  END = u.id
@@ -424,8 +425,8 @@ exports.searchUsers = async (req, res) => {
         const { username } = req.query;
 
         const result = await getDbClient(req).query(
-            `SELECT id, username 
-             FROM users 
+            `SELECT id, username, profile_picture
+             FROM users
              WHERE username ILIKE $1 AND id != $2
              LIMIT 10`,
             [`%${username}%`, userId]

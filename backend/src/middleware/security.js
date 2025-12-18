@@ -3,12 +3,16 @@ const { executeAsSystem } = require('./rlsContext');
 
 const auditLog = async (userId, action, success, req, details = {}) => {
   try {
+    // Convert empty strings or undefined to null for UUID columns
+    // PostgreSQL UUIDs can be NULL but not empty strings
+    const sanitizedUserId = (userId === '' || userId === undefined) ? null : userId;
+
     // Audit logs are system operations - bypass RLS
     await executeAsSystem(
       `INSERT INTO audit_logs (user_id, action, ip_address, user_agent, success, details)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        userId,
+        sanitizedUserId,
         action,
         req.ip,
         req.get('user-agent'),

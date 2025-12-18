@@ -353,10 +353,11 @@ CREATE POLICY notifications_select_policy ON notifications
     FOR SELECT
     USING (user_id = current_setting('app.user_id', true)::UUID);
 
--- INSERT: Allow creating notifications for any user (controlled by application logic)
+-- INSERT: Only system operations can create notifications (for cross-user notifications)
+-- System UUID: 00000000-0000-0000-0000-000000000000
 CREATE POLICY notifications_insert_policy ON notifications
     FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID);
 
 -- UPDATE: Users can only update their own notifications (marking as read)
 CREATE POLICY notifications_update_policy ON notifications
@@ -370,17 +371,20 @@ CREATE POLICY notifications_delete_policy ON notifications
     USING (user_id = current_setting('app.user_id', true)::UUID);
 
 -- Refresh tokens policies: Split into separate operations for better control
--- SELECT: Users can only see their own tokens
+-- System operations use UUID: 00000000-0000-0000-0000-000000000000
+-- SELECT: Users can see their own tokens, or system can see all (for cleanup operations)
 CREATE POLICY refresh_tokens_select_policy ON refresh_tokens
     FOR SELECT
-    USING (user_id = current_setting('app.user_id', true)::UUID);
+    USING (
+        user_id = current_setting('app.user_id', true)::UUID
+        OR current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
+    );
 
--- INSERT: Allow system operations (registration/login) when app.user_id is not set
--- This enables executeAsSystem() to create tokens during registration
+-- INSERT: Allow system operations (registration/login) to create tokens for any user
 CREATE POLICY refresh_tokens_insert_policy ON refresh_tokens
     FOR INSERT
     WITH CHECK (
-        current_setting('app.user_id', true) IS NULL
+        current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
         OR user_id = current_setting('app.user_id', true)::UUID
     );
 
@@ -388,11 +392,11 @@ CREATE POLICY refresh_tokens_insert_policy ON refresh_tokens
 CREATE POLICY refresh_tokens_update_policy ON refresh_tokens
     FOR UPDATE
     USING (
-        current_setting('app.user_id', true) IS NULL
+        current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
         OR user_id = current_setting('app.user_id', true)::UUID
     )
     WITH CHECK (
-        current_setting('app.user_id', true) IS NULL
+        current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
         OR user_id = current_setting('app.user_id', true)::UUID
     );
 
@@ -400,19 +404,23 @@ CREATE POLICY refresh_tokens_update_policy ON refresh_tokens
 CREATE POLICY refresh_tokens_delete_policy ON refresh_tokens
     FOR DELETE
     USING (
-        current_setting('app.user_id', true) IS NULL
+        current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
         OR user_id = current_setting('app.user_id', true)::UUID
     );
 
 -- Audit logs policies: Users can read their own audit logs (read-only)
+-- System operations use UUID: 00000000-0000-0000-0000-000000000000
 CREATE POLICY audit_logs_read_policy ON audit_logs
     FOR SELECT
-    USING (user_id = current_setting('app.user_id', true)::UUID);
+    USING (
+        user_id = current_setting('app.user_id', true)::UUID
+        OR current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID
+    );
 
--- INSERT: Allow system to write audit logs (registration, login, etc.)
+-- INSERT: Only system operations can write audit logs (no user-initiated audit writes)
 CREATE POLICY audit_logs_insert_policy ON audit_logs
     FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (current_setting('app.user_id', true)::UUID = '00000000-0000-0000-0000-000000000000'::UUID);
 
 -- Functions
 CREATE OR REPLACE FUNCTION update_updated_at_column()
