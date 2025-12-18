@@ -51,9 +51,8 @@ const setRLSContext = async (req, res, next) => {
     req.dbClient = client;
     req.rlsEnabled = true;
 
-    // Store original methods
+    // Store original send method
     const originalSend = res.send;
-    const originalJson = res.json;
     let responseSent = false;
 
     // Helper to commit and cleanup
@@ -90,6 +89,7 @@ const setRLSContext = async (req, res, next) => {
     };
 
     // Override res.send to ensure commit before response
+    // Note: res.json() calls res.send() internally, so we only need to override send()
     res.send = function(data) {
       const self = this;
       commitAndCleanup()
@@ -101,24 +101,7 @@ const setRLSContext = async (req, res, next) => {
           if (!res.headersSent) {
             // If commit failed, send error response instead of success
             self.status(500);
-            originalJson.call(self, { error: { message: 'Failed to save changes' } });
-          }
-        });
-    };
-
-    // Override res.json to ensure commit before response
-    res.json = function(data) {
-      const self = this;
-      commitAndCleanup()
-        .then(() => {
-          originalJson.call(self, data);
-        })
-        .catch(err => {
-          logger.error('Commit failed, sending error response:', err);
-          if (!res.headersSent) {
-            // If commit failed, send error response instead of success
-            self.status(500);
-            originalJson.call(self, { error: { message: 'Failed to save changes' } });
+            originalSend.call(self, JSON.stringify({ error: { message: 'Failed to save changes' } }));
           }
         });
     };
