@@ -3,6 +3,13 @@
    Page-specific container and layout
    ============================================ */
 
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  min-height: 100vh;
+}
+
 .search-container {
   max-width: 800px;
   margin: 0 auto;

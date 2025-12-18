@@ -20,8 +20,10 @@
 /* ========== COMPONENTS ========== */
 @import url('components/buttons.css');
 @import url('components/forms.css');
+@import url('components/auth.css');
 @import url('components/settings-cards.css');
 @import url('components/modals.css');
+@import url('components/notifications.css');
 @import url('components/toast.css');
 
 /* ============================================

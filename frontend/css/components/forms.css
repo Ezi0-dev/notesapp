@@ -3,7 +3,7 @@
    ============================================ */
 
 .form-group {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
 }
 
 .form-group label {
@@ -81,15 +81,45 @@
 .search-input {
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(99, 102, 241, 0.3);
-  padding-left: 2.5rem;
+  padding-left: 3 rem;
   position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-input:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(30, 41, 59, 0.6);
+}
+
+/* Animated border gradient on focus */
+.search-input:focus {
+  transform: translateY(-2px);
+  background: rgba(30, 41, 59, 0.7);
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1),
+                0 4px 20px rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    border-color: rgba(139, 92, 246, 0.8);
+    box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.15),
+                0 6px 24px rgba(139, 92, 246, 0.3);
+  }
 }
 
 .search-box {
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-input-wrapper {
   position: relative;
 }
 
-.search-box::before {
+.search-input-wrapper::before {
   content: '🔍';
   position: absolute;
   left: 1rem;
@@ -98,7 +128,37 @@
   font-size: var(--font-lg);
   pointer-events: none;
   z-index: 1;
-  margin-top: 1.25rem;
+  opacity: 0.5;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1;
+  filter: grayscale(0.5);
+}
+
+/* Icon animation on focus */
+.search-input-wrapper:focus-within::before {
+  opacity: 1;
+  transform: translateY(calc(-50% - 2px)) scale(1.2);
+  filter: grayscale(0) drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
+}
+
+/* Icon pulse animation on hover */
+.search-input-wrapper:hover::before {
+  opacity: 0.8;
+  animation: iconPulse 1.5s ease-in-out infinite;
+}
+
+/* Stop pulse when focused */
+.search-input-wrapper:focus-within:hover::before {
+  animation: none;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: translateY(-50%) scale(1.1);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.15);
+  }
 }
 
 .note-title-input {

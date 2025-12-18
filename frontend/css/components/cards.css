@@ -59,7 +59,7 @@
     transparent 70%
   );
   opacity: 0;
-  transition: opacity var(--transition-smooth);
+  transition: opacity var(--transition-base);
   pointer-events: none;
   animation: rotateGlow 10s linear infinite;
   animation-play-state: paused;
@@ -285,7 +285,7 @@
 /* Individual button hover states with enhanced colors */
 .note-actions button:hover,
 .note-actions .btn-icon:hover {
-  transform: scale(1.15) rotate(5deg);
+  transform: scale(1.15);
   border-color: transparent;
 }
 
@@ -369,7 +369,7 @@
   outline-offset: 3px;
 }
 
-/* Reduced motion support for accessibility */
+/* Reduced motion support for accessibility 
 @media (prefers-reduced-motion: reduce) {
   .note-card,
   .note-card::before,
@@ -381,3 +381,4 @@
     transition-duration: 0.1s !important;
   }
 }
+*/

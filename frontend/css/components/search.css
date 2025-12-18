@@ -260,47 +260,6 @@
   transform: translateY(0);
 }
 
-/* Profile Modal (specific to search page) */
-.profile-modal {
-  background-color: var(--bg-secondary);
-  margin: 10% auto;
-  padding: var(--spacing-2xl);
-  width: 90%;
-  max-width: 500px;
-  border-radius: var(--radius-lg);
-  position: relative;
-  border: 1px solid var(--border-color);
-}
-
-.close {
-  position: absolute;
-  right: var(--spacing-lg);
-  top: var(--spacing-lg);
-  font-size: 1.75rem;
-  font-weight: bold;
-  cursor: pointer;
-  color: var(--text-muted);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.close:hover {
-  color: var(--text-color);
-  transform: rotate(90deg) scale(1.1);
-}
-
-/* Friendship Status Indicators */
-.friendship-status.friends {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--success-color);
-  border: 1px solid var(--success-color);
-}
-
-.friendship-status.pending {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color);
-  border: 1px solid var(--warning-color);
-}
-
 /* Alerts */
 .alert {
   padding: var(--spacing-md);

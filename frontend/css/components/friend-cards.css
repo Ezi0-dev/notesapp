@@ -247,6 +247,26 @@
   background: var(--bg-color);
 }
 
+/* Hide when empty to avoid awkward spacing */
+.friendship-status:empty {
+  display: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Friendship Status Color Variants */
+.friendship-status.friends {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+}
+
+.friendship-status.pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
 /* Friend Badge */
 .friend-badge {
   display: inline-block;

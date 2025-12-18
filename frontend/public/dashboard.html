@@ -18,9 +18,9 @@
           <div class="notifications-dropdown">
             <button class="btn btn-notifications" id="notificationsBtn">
                 <span class="logout-icon">🔔</span>
-                <span class="logout-text">Notifs</span>
-                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                <span class="logout-text">Notifications</span>
             </button>
+            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
 
             <div class="notifications-dropdown-content" id="notificationsDropdown" style="display: none;">
               <div class="notifications-header">
@@ -70,12 +70,14 @@
       
       <div class="search-box">
         <h3>Search</h3>
-        <input
-          type="text"
-          id="searchInput"
-          class="search-input"
-          placeholder="Search notes..."
-        >
+        <div class="search-input-wrapper">
+          <input
+            type="text"
+            id="searchInput"
+            class="search-input"
+            placeholder="Search notes..."
+          >
+        </div>
       </div>
 
       <div class="sidebar-section">
@@ -154,8 +156,8 @@
           ></textarea>
         </div>
 
-        <div class="form-group" id="encryptionContainer">
-          <label class="checkbox-label" style="display: flex;">
+        <div class="form-group encryption-option">
+          <label class="checkbox-label">
             <input type="checkbox" id="noteEncrypted" checked>
             <span>🔒 Encrypt this note (recommended)</span>
           </label>
@@ -200,13 +202,13 @@
 </div>
 
 <div id="manageSharesModal" class="modal" style="display: none;">
-  <div class="modal-content">
+  <div class="modal-content modal-shares">
     <div class="modal-header">
       <h2>Manage Shares</h2>
       <button id="closeManageSharesModal" class="modal-close" aria-label="Close modal">&times;</button>
     </div>
     <div id="manageSharesError" class="error-message"></div>
-    <div id="sharesList" class="note-form"></div>
+    <div id="sharesList" class="shares-list"></div>
   </div>
 </div>
 

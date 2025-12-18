@@ -19,7 +19,9 @@
 @import url('components/forms.css');
 @import url('components/friend-cards.css');
 @import url('components/modals.css');
+@import url('components/notifications.css');
 @import url('components/toast.css');
+@import url('components/tabs.css');
 
 /* ========== PAGE-SPECIFIC ========== */
 @import url('pages/friends-page.css');

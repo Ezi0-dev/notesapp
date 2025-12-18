@@ -7,11 +7,11 @@
   position: relative;
 }
 
-/* Notification Badge */
+/* Notification Badge - positioned relative to dropdown container, not button */
 .notification-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: -4px;
+  right: -4px;
   background: linear-gradient(135deg, var(--error-color), #dc2626);
   color: white;
   font-size: var(--font-xs);
@@ -25,17 +25,25 @@
   justify-content: center;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
   animation: badgePulse 2s ease-in-out infinite;
-  z-index: var(--z-base);
+  z-index: 10;
+  pointer-events: none;
+  transition: all var(--transition-base);
+}
+
+/* Badge responds to button hover */
+.btn-notifications:hover ~ .notification-badge {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
 }
 
 @keyframes badgePulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
   }
   50% {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
   }
 }
 

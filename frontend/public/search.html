@@ -7,23 +7,26 @@
     <link rel="stylesheet" href="../css/search.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="dashboard.html" class="nav-brand">Secure Notes</a>
-            <ul class="nav-menu">
-                <li><a href="dashboard.html">My Notes</a></li>
-                <li><a href="shared.html">Shared Notes</a></li>
-                <li><a href="friends.html">Friends</a></li>
-                <li><a href="search.html" class="active">Search Users</a></li>
-                <li><a href="#" id="logoutBtn">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
-
     <div class="container">
         <div class="search-container">
             <h1>Search Users</h1>
-            
+
+            <!-- Navigation Tabs -->
+            <div class="page-tabs">
+                <a href="/friends.html" class="tab-link">
+                    <span class="tab-icon">👥</span>
+                    <span class="tab-text">My Friends</span>
+                </a>
+                <a href="/search.html" class="tab-link active">
+                    <span class="tab-icon">🔍</span>
+                    <span class="tab-text">Search Users</span>
+                </a>
+                <a href="/dashboard.html" class="tab-link">
+                    <span class="tab-icon">📝</span>
+                    <span class="tab-text">Dashboard</span>
+                </a>
+            </div>
+
             <!-- Search Bar -->
             <div class="search-bar">
                 <input 
@@ -58,6 +61,15 @@
                 <button id="removeFriendBtn" class="btn btn-danger" style="display: none;">Remove Friend</button>
                 <p id="friendshipStatus" class="friendship-status"></p>
             </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span class="toast-icon">✓</span>
+        <div class="toast-content">
+            <div class="toast-title" id="toastTitle">Success</div>
+            <div class="toast-message" id="toastMessage">Action completed</div>
         </div>
     </div>
 
