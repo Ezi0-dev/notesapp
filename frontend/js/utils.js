@@ -202,8 +202,8 @@ function escapeHtml(text) {
 // Get user avatar URL with fallback
 function getUserAvatarUrl(profilePicture, username) {
   if (profilePicture) {
-    // Return the uploaded profile picture URL
-    return `http://localhost:5000/uploads/avatars/${profilePicture}`;
+    // Return the uploaded profile picture URL (relative path through nginx)
+    return `/uploads/avatars/${profilePicture}`;
   }
   // Fallback to generated avatar based on username
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
