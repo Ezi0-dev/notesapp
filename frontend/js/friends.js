@@ -42,10 +42,12 @@ function setupFriendActionListeners() {
 
 function setupNavigationListeners() {
   const logoutBtn = document.getElementById("logoutBtn");
-  logoutBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    logout();
-  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      logout();
+    });
+  }
 }
 
 // ==================== State Management ====================
@@ -62,7 +64,12 @@ async function loadFriends() {
     displayFriendsList();
   } catch (error) {
     console.error("Error loading friends:", error);
-    showAlert("Failed to load friends list", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Load Failed",
+      message: "Failed to load friends list"
+    });
   }
 }
 
@@ -126,7 +133,12 @@ async function loadFriendRequests() {
     displayFriendRequests();
   } catch (error) {
     console.error("Error loading friend requests:", error);
-    showAlert("Failed to load friend requests", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Load Failed",
+      message: "Failed to load friend requests"
+    });
   }
 }
 
@@ -224,26 +236,46 @@ async function handleAcceptRequest(requestId) {
     if (!requestId) throw new Error("Invalid request ID");
 
     await api.acceptFriendRequest(requestId);
-    showAlert("Friend request accepted!", "success");
+    showToast({
+      icon: "✓",
+      type: "success",
+      title: "Request Accepted",
+      message: "Friend request accepted!"
+    });
 
     await loadFriends();
     await loadFriendRequests();
   } catch (error) {
     console.error("Error accepting friend request:", error);
-    showAlert("Failed to accept friend request", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Accept Failed",
+      message: "Failed to accept friend request"
+    });
   }
 }
 
 async function handleDeclineRequest(requestId) {
   try {
     await api.declineFriendRequest(requestId);
-    showAlert("Friend request declined", "info");
+    showToast({
+      icon: "✓",
+      type: "success",
+      title: "Request Declined",
+      message: "Friend request declined"
+    });
 
     // Reload requests list
     await loadFriendRequests();
   } catch (error) {
     console.error("Error declining friend request:", error);
-    showAlert("Failed to decline friend request", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Decline Failed",
+      message: "Failed to decline friend request"
+    });
   }
 }
 
@@ -254,13 +286,23 @@ async function handleRemoveFriendFromList(userId, username) {
 
   try {
     await api.removeFriend(userId);
-    showAlert("Friend removed successfully", "success");
+    showToast({
+      icon: "✓",
+      type: "success",
+      title: "Friend Removed",
+      message: "Friend removed successfully"
+    });
 
     // Reload friends list
     await loadFriends();
   } catch (error) {
     console.error("Error removing friend:", error);
-    showAlert("Failed to remove friend", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Remove Failed",
+      message: "Failed to remove friend"
+    });
   }
 }
 
@@ -272,6 +314,9 @@ async function openProfileModal(userId, username, profilePicture = null) {
   const profileMemberSince = document.getElementById("profileMemberSince");
 
   currentSelectedUser = { id: userId, username: username };
+
+  // Reset modal UI state to prevent old state from showing
+  resetModalState();
 
   // Set profile information
   // Use provided profile picture, or try to find from friends list, or use fallback
@@ -285,6 +330,22 @@ async function openProfileModal(userId, username, profilePicture = null) {
 
   // Show modal
   profileModal.style.display = "block";
+}
+
+function resetModalState() {
+  const addFriendBtn = document.getElementById("addFriendBtn");
+  const removeFriendBtn = document.getElementById("removeFriendBtn");
+  const friendshipStatus = document.getElementById("friendshipStatus");
+
+  // Reset to default state - hide all buttons and clear status
+  addFriendBtn.style.display = "none";
+  removeFriendBtn.style.display = "none";
+  addFriendBtn.disabled = false;
+  removeFriendBtn.disabled = false;
+  addFriendBtn.textContent = "Add Friend";
+  removeFriendBtn.textContent = "Remove Friend";
+  friendshipStatus.textContent = "";
+  friendshipStatus.className = "friendship-status";
 }
 
 function closeProfileModal() {
@@ -369,13 +430,23 @@ async function handleAddFriend() {
     friendshipStatus.className = "friendship-status pending";
     addFriendBtn.style.display = "none";
 
-    showAlert("Friend request sent successfully!", "success");
+    showToast({
+      icon: "✓",
+      type: "success",
+      title: "Request Sent",
+      message: "Friend request sent successfully!"
+    });
 
     // Reload requests in case this user sent us a request
     await loadFriendRequests();
   } catch (error) {
     console.error("Error sending friend request:", error);
-    showAlert("Failed to send friend request", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Request Failed",
+      message: "Failed to send friend request"
+    });
     resetButton(addFriendBtn, "Add Friend");
   }
 }
@@ -408,22 +479,27 @@ async function handleRemoveFriend() {
     // Reload friends list
     await loadFriends();
 
-    showAlert("Friend removed successfully", "success");
+    showToast({
+      icon: "✓",
+      type: "success",
+      title: "Friend Removed",
+      message: "Friend removed successfully"
+    });
     closeProfileModal();
   } catch (error) {
     console.error("Error removing friend:", error);
-    showAlert("Failed to remove friend", "error");
+    showToast({
+      icon: "✗",
+      type: "error",
+      title: "Remove Failed",
+      message: "Failed to remove friend"
+    });
     resetButton(removeFriendBtn, "Remove Friend");
   }
 }
 
 // ==================== Utility Functions ====================
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
+// Note: escapeHtml is now imported from utils.js
 
 function formatDate(dateString) {
   const date = new Date(dateString);
@@ -442,17 +518,6 @@ function setButtonLoading(button, text) {
 function resetButton(button, text) {
   button.disabled = false;
   button.textContent = text;
-}
-
-function showAlert(message, type) {
-  const alertDiv = document.createElement("div");
-  alertDiv.className = `alert alert-${type}`;
-  alertDiv.textContent = message;
-
-  const container = document.querySelector(".friends-container");
-  container.insertBefore(alertDiv, container.firstChild);
-
-  setTimeout(() => alertDiv.remove(), 3000);
 }
 
 // Update display functions to attach listeners after rendering

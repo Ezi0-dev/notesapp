@@ -60,7 +60,7 @@ async function loadUserProfile() {
       const avatarImage = document.getElementById("profilePicture");
       const avatarPlaceholder = document.getElementById("avatarPlaceholder");
 
-      avatarImage.src = `http://localhost:5000/uploads/avatars/${user.profile_picture}`;
+      avatarImage.src = `/uploads/avatars/${user.profile_picture}`;
       avatarImage.classList.add("show");
       avatarPlaceholder.classList.add("hide");
     } else {
@@ -123,7 +123,7 @@ function setupProfilePictureListeners() {
 
       // Display the uploaded image from server
       if (data.profilePicture) {
-        avatarImage.src = `http://localhost:5000/uploads/avatars/${data.profilePicture}`;
+        avatarImage.src = `/uploads/avatars/${data.profilePicture}`;
         avatarImage.classList.add("show");
         avatarPlaceholder.classList.add("hide");
 
@@ -235,9 +235,6 @@ function setupPasswordChangeListener() {
       // Call backend
       await api.changePassword(currentPassword, newPassword);
 
-      // Simulate API call (testing)
-      //await new Promise(resolve => setTimeout(resolve, 1000));
-
       showSuccess("passwordSuccess", "✓ Password updated successfully!");
       form.reset();
 
@@ -245,23 +242,22 @@ function setupPasswordChangeListener() {
         icon: "🔒",
         type: "success",
         title: "Password Changed",
-        message: "Your password has been updated successfully",
+        message: "Your password has been updated successfully. Logging out in 3 seconds...",
       });
-    } catch (error) {
-      showError("passwordError", error.message || "Failed to update password");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "🔒 Update Password";
 
-      await api.logout(); // Revoke token from db
-
+      // Only logout and redirect on success
+      await api.logout();
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
 
       setTimeout(() => {
         window.location.href = "/login.html";
-      }, 5000);
+      }, 3000);
+    } catch (error) {
+      showError("passwordError", error.message || "Failed to update password");
+      btn.disabled = false;
+      btn.textContent = "🔒 Update Password";
     }
   });
 }

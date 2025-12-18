@@ -148,7 +148,7 @@ function createNotificationElement(notification) {
         <button class="btn-notification-action btn-notification-mark-read"
                 data-notification-id="${notification.id}"
                 title="Mark as read">
-          ✓
+          👁️
         </button>
       `
           : ""
@@ -289,11 +289,7 @@ function formatTimeAgo(date) {
   }
 }
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
+// Note: escapeHtml is now imported from utils.js
 
 function showNotificationError(message) {
   console.error(message);

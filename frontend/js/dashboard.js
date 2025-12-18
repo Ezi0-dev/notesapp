@@ -462,6 +462,13 @@ window.confirmShare = async function () {
   const friendId = document.getElementById("shareFriendSelect").value;
   const permission = document.getElementById("sharePermissionSelect").value;
 
+  // Validate noteId exists
+  if (!currentNoteId) {
+    showError("shareError", "Note ID is missing. Please try again.");
+    console.error("currentNoteId is empty:", currentNoteId);
+    return;
+  }
+
   if (!friendId) {
     showError("shareError", "Please select a friend");
     return;
@@ -478,7 +485,12 @@ window.confirmShare = async function () {
 
     await api.shareNote(currentNoteId, friendId, permission);
     closeShareModal();
-    showSuccess("Note shared successfully!");
+    showToast({
+      icon: "👥",
+      type: "success",
+      title: "Note Shared",
+      message: `Shared with ${permission} access`,
+    });
   } catch (error) {
     showError("shareError", "Failed to share note: " + error.message);
   } finally {
@@ -508,23 +520,31 @@ window.manageShares = async function (noteId) {
       .map(
         (share) => `
       <div class="share-item" data-share-id="${share.id}">
-        <img src="${share.avatar_url || "/default-avatar.png"}" alt="${
-          share.username
-        }" class="share-avatar">
-        <span class="share-username">${escapeHtml(share.username)}</span>
-        <select class="share-permission" onchange="updateSharePermission('${noteId}', '${
-          share.shared_with_id
-        }', this.value)">
-          <option value="read" ${
-            share.permission === "read" ? "selected" : ""
-          }>Read</option>
-          <option value="write" ${
-            share.permission === "write" ? "selected" : ""
-          }>Write</option>
-        </select>
-        <button class="btn-unshare" onclick="unshareNote('${noteId}', '${
-          share.shared_with_id
-        }')">Unshare</button>
+        <div class="share-item-info">
+          <div class="share-item-avatar">
+            <img src="${getUserAvatarUrl(share.profile_picture, share.username)}"
+                 alt="${escapeHtml(share.username)}"
+                 style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+          </div>
+          <div class="share-item-details">
+            <h4>${escapeHtml(share.username)}</h4>
+            <span class="share-item-permission ${share.permission}">
+              ${share.permission === "write" ? "✏️ Read & Write" : "👁️ Read Only"}
+            </span>
+          </div>
+        </div>
+        <div class="share-item-actions">
+          <button class="btn btn-secondary btn-change-permission"
+                  onclick="toggleSharePermission('${noteId}', '${share.shared_with_id}', '${share.permission}')"
+                  title="Change permission">
+            ${share.permission === "read" ? "⬆️ Upgrade" : "⬇️ Downgrade"}
+          </button>
+          <button class="btn btn-danger btn-unshare"
+                  onclick="unshareNote('${noteId}', '${share.shared_with_id}')"
+                  title="Remove access">
+            🗑️ Unshare
+          </button>
+        </div>
       </div>
     `
       )
@@ -541,19 +561,24 @@ function closeManageSharesModal() {
   document.getElementById("manageSharesModal").style.display = "none";
 }
 
-window.updateSharePermission = async function (
+window.toggleSharePermission = async function (
   noteId,
   sharedWithId,
-  permission
+  currentPermission
 ) {
+  const newPermission = currentPermission === "read" ? "write" : "read";
+
   try {
-    await api.updateSharePermission(noteId, sharedWithId, permission);
+    await api.updateSharePermission(noteId, sharedWithId, newPermission);
     showToast({
       icon: "✓",
       type: "success",
       title: "Permission Updated",
-      message: `Changed to ${permission} access`,
+      message: `Changed to ${newPermission === "write" ? "Read & Write" : "Read Only"} access`,
     });
+
+    // Refresh the shares list to show updated permission
+    manageShares(noteId);
   } catch (error) {
     showError(
       "manageSharesError",
@@ -564,7 +589,16 @@ window.updateSharePermission = async function (
 };
 
 window.unshareNote = async function (noteId, sharedWithId) {
-  if (!confirm("Are you sure you want to unshare this note?")) return;
+  const confirmed = await showConfirm({
+    icon: "🗑️",
+    type: "danger",
+    title: "Remove Access?",
+    message: "This user will no longer be able to view or edit this note.",
+    confirmText: "Unshare",
+    cancelText: "Cancel",
+  });
+
+  if (!confirmed) return;
 
   try {
     await api.unshareNote(noteId, sharedWithId);
@@ -572,7 +606,7 @@ window.unshareNote = async function (noteId, sharedWithId) {
       icon: "✓",
       type: "success",
       title: "Note Unshared",
-      message: "Note access removed",
+      message: "Note access removed successfully",
     });
 
     // Refresh the shares list
@@ -694,11 +728,10 @@ function setModalMode(mode) {
     if (contentInput) contentInput.readOnly = true;
     if (encryptedInput) encryptedInput.disabled = true;
 
-    // Hide Save/Cancel
+    // Hide Save/Cancel and encryption toggle in view mode
     if (saveBtn) saveBtn.style.display = "none";
     if (cancelBtn) cancelBtn.style.display = "none";
     if (encryptionContainer) encryptionContainer.style.display = "none";
-    if (modalContainer) modalContainer.style.display = "none";
 
     // Show Edit button if it exists
     if (editBtn) editBtn.style.display = "inline-flex";
@@ -708,11 +741,10 @@ function setModalMode(mode) {
     if (contentInput) contentInput.readOnly = false;
     if (encryptedInput) encryptedInput.disabled = false;
 
-    // Show Save/Cancel
+    // Show Save/Cancel and encryption toggle in edit mode
     if (saveBtn) saveBtn.style.display = "inline-flex";
     if (cancelBtn) cancelBtn.style.display = "inline-flex";
     if (encryptionContainer) encryptionContainer.style.display = "inline-flex";
-    if (modalContainer) modalContainer.style.display = "flex";
 
     // Hide Edit button if it exists
     if (editBtn) editBtn.style.display = "none";
