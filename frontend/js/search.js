@@ -1,3 +1,17 @@
+import api from './api.js';
+import {
+  redirectIfNotAuthenticated,
+  escapeHtml,
+  getUserAvatarUrl,
+  showToast
+} from './utils.js';
+import {
+  initProfileModal,
+  openProfileModal,
+  setFriendsList,
+  getFriendsList
+} from './profileModal.js';
+
 // ==================== Initialization ====================
 document.addEventListener("DOMContentLoaded", async () => {
   await redirectIfNotAuthenticated();

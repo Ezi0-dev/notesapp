@@ -1,3 +1,6 @@
+import api from './api.js';
+import { redirectIfAuthenticated, showSuccess, showError, updatePasswordStrength } from './utils.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Force re-login for existing users - clear any old localStorage tokens
   localStorage.removeItem('accessToken');

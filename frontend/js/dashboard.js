@@ -1,3 +1,15 @@
+import api from './api.js';
+import {
+  redirectIfNotAuthenticated,
+  escapeHtml,
+  getUserAvatarUrl,
+  getUserInitials,
+  getRelativeTime,
+  showError,
+  showToast,
+  showConfirm
+} from './utils.js';
+
 let notes = [];
 let sharednotes = [];
 let currentNoteId = null;
@@ -322,7 +334,7 @@ function openNewNoteModal() {
 }
 
 // Edit existing note
-window.editNote = async function (id) {
+async function editNote(id) {
   try {
     const noteData = notes.find((n) => n.id === id);
 
@@ -357,7 +369,7 @@ window.editNote = async function (id) {
     showError("noteError", "Failed to load note: " + error.message);
     console.error("Edit note error:", error);
   }
-};
+}
 
 // Delete note
 async function deleteNote(id) {
@@ -462,7 +474,7 @@ async function saveNote(e) {
   }
 }
 
-window.shareNote = async function (noteId) {
+async function shareNote(noteId) {
   try {
     currentNoteId = noteId;
 
@@ -498,9 +510,9 @@ window.shareNote = async function (noteId) {
   } catch (error) {
     showError("noteError", "Failed to load friends: " + error.message);
   }
-};
+}
 
-window.confirmShare = async function () {
+async function confirmShare() {
   const friendId = document.getElementById("shareFriendSelect").value;
   const permission = document.getElementById("sharePermissionSelect").value;
 
@@ -541,15 +553,15 @@ window.confirmShare = async function () {
     shareBtn.classList.remove("loading");
     shareBtn.innerHTML = originalText;
   }
-};
+}
 
 // Close share modal
-window.closeShareModal = function () {
+function closeShareModal() {
   document.getElementById("shareModal").style.display = "none";
   currentNoteId = null;
-};
+}
 
-window.manageShares = async function (noteId) {
+async function manageShares(noteId) {
   try {
     const shares = await api.getNoteShares(noteId);
 
@@ -603,7 +615,7 @@ window.manageShares = async function (noteId) {
     showError("manageSharesError", "Failed to load shares: " + error.message);
     console.error("Manage shares error:", error);
   }
-};
+}
 
 function closeManageSharesModal() {
   document.getElementById("manageSharesModal").style.display = "none";
@@ -636,11 +648,7 @@ function setupShareActionsListeners() {
   });
 }
 
-window.toggleSharePermission = async function (
-  noteId,
-  sharedWithId,
-  currentPermission
-) {
+async function toggleSharePermission(noteId, sharedWithId, currentPermission) {
   const newPermission = currentPermission === "read" ? "write" : "read";
 
   try {
@@ -661,9 +669,9 @@ window.toggleSharePermission = async function (
     );
     console.error("Update permission error:", error);
   }
-};
+}
 
-window.unshareNote = async function (noteId, sharedWithId) {
+async function unshareNote(noteId, sharedWithId) {
   const confirmed = await showConfirm({
     icon: "🗑️",
     type: "danger",
@@ -690,7 +698,7 @@ window.unshareNote = async function (noteId, sharedWithId) {
     showError("manageSharesError", "Failed to unshare note: " + error.message);
     console.error("Unshare note error:", error);
   }
-};
+}
 
 // Close modal
 function closeModal() {
@@ -801,7 +809,7 @@ function setModalMode(mode) {
   }
 }
 
-window.viewNote = async function (id) {
+async function viewNote(id) {
   try {
     // Find if note is shared
     const noteData = notes.find((n) => n.id === id);
@@ -836,7 +844,7 @@ window.viewNote = async function (id) {
     console.error("Failed to view note:", err);
     showError("noteError", "Failed to load note: " + err.message);
   }
-};
+}
 
 // Masonry initialization
 let masonryInstance = null;

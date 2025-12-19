@@ -212,13 +212,12 @@
   </div>
 </div>
 
-  <!-- IMPORTANT: Load scripts in this exact order -->
+  <!-- External library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js"></script>
 
-  <script src="../js/api.js"></script>
-  <script src="../js/utils.js"></script>
-  <script src="../js/notifications.js"></script>
-  <script src="../js/dashboard.js"></script>
+  <!-- Main module - automatically handles all imports -->
+  <script type="module" src="../js/dashboard.js"></script>
+  <script type="module" src="../js/notifications.js"></script>
 </body>
 </html>
 

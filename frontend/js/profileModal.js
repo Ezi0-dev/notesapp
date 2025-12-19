@@ -2,6 +2,9 @@
 // Shared modal logic for friends.js and search.js
 // This prevents ~300 lines of code duplication
 
+import api from './api.js';
+import { getUserAvatarUrl, setButtonLoading, resetButton, showToast } from './utils.js';
+
 // Module state
 let currentSelectedUser = null;
 let friendsList = [];
@@ -244,3 +247,6 @@ async function handleRemoveFriend() {
     resetButton(removeFriendBtn, "Remove Friend");
   }
 }
+
+// Export public API
+export { initProfileModal, openProfileModal, closeProfileModal, setFriendsList, getFriendsList };

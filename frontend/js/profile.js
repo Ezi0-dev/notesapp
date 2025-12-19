@@ -1,5 +1,18 @@
 // frontend/js/profile.js
 
+import api from './api.js';
+import {
+  redirectIfNotAuthenticated,
+  showToast,
+  showConfirm,
+  showError,
+  showSuccess,
+  formatFileSize,
+  getUserAvatarUrl,
+  getUserInitials,
+  updatePasswordStrength
+} from './utils.js';
+
 // Validate file by checking magic bytes (file signature)
 async function validateImageFile(file) {
   return new Promise((resolve, reject) => {

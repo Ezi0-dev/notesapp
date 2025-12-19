@@ -1,5 +1,7 @@
+import api from './api.js';
+
 // Show success message
-function showSuccess(elementId, message) {
+export function showSuccess(elementId, message) {
   const element = document.getElementById(elementId);
   if (element) {
     element.textContent = message;
@@ -13,7 +15,7 @@ function showSuccess(elementId, message) {
 }
 
 // Show error message
-function showError(elementId, message) {
+export function showError(elementId, message) {
   const element = document.getElementById(elementId);
   if (element) {
     element.textContent = message;
@@ -22,7 +24,7 @@ function showError(elementId, message) {
 }
 
 // Hide message
-function hideMessage(elementId) {
+export function hideMessage(elementId) {
   const element = document.getElementById(elementId);
   if (element) {
     element.style.display = "none";
@@ -32,7 +34,7 @@ function hideMessage(elementId) {
 
 // Check if user is authenticated by calling backend
 // Can't check cookies from JS (httpOnly), so we ask the server
-async function isAuthenticated() {
+export async function isAuthenticated() {
   try {
     const response = await api.checkAuth();
     return response.authenticated === true;
@@ -42,7 +44,7 @@ async function isAuthenticated() {
 }
 
 // Redirect to login if not authenticated
-async function redirectIfNotAuthenticated() {
+export async function redirectIfNotAuthenticated() {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     window.location.href = "/login.html";
@@ -50,7 +52,7 @@ async function redirectIfNotAuthenticated() {
 }
 
 // Redirect to dashboard if already authenticated
-async function redirectIfAuthenticated() {
+export async function redirectIfAuthenticated() {
   const authenticated = await isAuthenticated();
   if (authenticated) {
     window.location.href = "/dashboard.html";
@@ -58,7 +60,7 @@ async function redirectIfAuthenticated() {
 }
 
 // Update password strength indicator
-function checkPasswordStrength(password) {
+export function checkPasswordStrength(password) {
   let strength = 0;
   if (password.length >= 8) strength++;
   if (password.length >= 12) strength++;
@@ -70,7 +72,7 @@ function checkPasswordStrength(password) {
   return strength;
 }
 
-function updatePasswordStrength(password, elementId) {
+export function updatePasswordStrength(password, elementId) {
   const element = document.getElementById(elementId);
   if (!element) return;
 
@@ -98,13 +100,13 @@ function updatePasswordStrength(password, elementId) {
 }
 
 // Validate email format
-function isValidEmail(email) {
+export function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
 // Format file size
-function formatFileSize(bytes) {
+export function formatFileSize(bytes) {
   if (bytes === 0) return "0 Bytes";
 
   const k = 1024;
@@ -115,7 +117,7 @@ function formatFileSize(bytes) {
 }
 
 // Debounce function for search/filter
-function debounce(func, wait) {
+export function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
     const later = () => {
@@ -128,7 +130,7 @@ function debounce(func, wait) {
 }
 
 // Copy text to clipboard
-async function copyToClipboard(text) {
+export async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -139,7 +141,7 @@ async function copyToClipboard(text) {
 }
 
 // Get relative time (e.g., "2 hours ago")
-function getRelativeTime(dateString) {
+export function getRelativeTime(dateString) {
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
@@ -165,7 +167,7 @@ function getRelativeTime(dateString) {
 }
 
 // Format date as absolute (e.g., "Jan 15, 2024")
-function formatAbsoluteDate(dateString) {
+export function formatAbsoluteDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", {
     year: "numeric",
@@ -175,29 +177,29 @@ function formatAbsoluteDate(dateString) {
 }
 
 // Button loading state helpers
-function setButtonLoading(button, text) {
+export function setButtonLoading(button, text) {
   button.disabled = true;
   button.textContent = text;
 }
 
-function resetButton(button, text) {
+export function resetButton(button, text) {
   button.disabled = false;
   button.textContent = text;
 }
 
 // Truncate text
-function truncate(text, maxLength) {
+export function truncate(text, maxLength) {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "...";
 }
 
 // Generate random ID
-function generateId() {
+export function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 // Check if dark mode is enabled
-function isDarkMode() {
+export function isDarkMode() {
   return (
     document.body.classList.contains("dark-mode") ||
     window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -205,7 +207,7 @@ function isDarkMode() {
 }
 
 // Toggle dark mode
-function toggleDarkMode() {
+export function toggleDarkMode() {
   document.body.classList.toggle("dark-mode");
   localStorage.setItem(
     "darkMode",
@@ -213,7 +215,7 @@ function toggleDarkMode() {
   );
 }
 
-function escapeHtml(text) {
+export function escapeHtml(text) {
   const map = {
     "&": "&amp;",
     "<": "&lt;",
@@ -225,7 +227,7 @@ function escapeHtml(text) {
 }
 
 // Get user avatar URL with fallback
-function getUserAvatarUrl(profilePicture, username) {
+export function getUserAvatarUrl(profilePicture, username) {
   if (profilePicture) {
     // Return the uploaded profile picture URL (relative path through nginx)
     return `/uploads/avatars/${profilePicture}`;
@@ -235,13 +237,13 @@ function getUserAvatarUrl(profilePicture, username) {
 }
 
 // Get initials from username
-function getUserInitials(username) {
+export function getUserInitials(username) {
   if (!username) return "??";
   return username.substring(0, 2).toUpperCase();
 }
 
 // Custom Confirm Modal
-function showConfirm(options) {
+export function showConfirm(options) {
   return new Promise((resolve) => {
     const modal = document.getElementById("confirmModal");
     const icon = document.getElementById("confirmIcon");
@@ -296,7 +298,7 @@ function showConfirm(options) {
 }
 
 // Toast Notification
-function showToast(options) {
+export function showToast(options) {
   const toast = document.getElementById("toast");
   const icon = toast.querySelector(".toast-icon");
   const title = document.getElementById("toastTitle");

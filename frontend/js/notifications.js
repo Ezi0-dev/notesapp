@@ -1,3 +1,6 @@
+import api from './api.js';
+import { escapeHtml, getRelativeTime, getUserAvatarUrl, showToast } from './utils.js';
+
 // ==================== Initialization ====================
 document.addEventListener("DOMContentLoaded", async () => {
   // Start auto-refresh timer
