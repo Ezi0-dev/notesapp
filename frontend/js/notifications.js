@@ -1,5 +1,8 @@
 // ==================== Initialization ====================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // Start auto-refresh timer
+  api.startRefreshTimer();
+
   initializeNotifications();
   setupNotificationListeners();
   setupDropdownListeners();

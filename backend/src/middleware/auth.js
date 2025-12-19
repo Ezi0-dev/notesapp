@@ -3,16 +3,16 @@ const { pool } = require('../config/database');
 const { jwt: jwtConfig } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { COOKIE_NAMES } = require('../utils/cookieConfig');
 
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Read token from httpOnly cookie instead of Authorization header
+    const token = req.cookies[COOKIE_NAMES.ACCESS_TOKEN];
+
+    if (!token) {
       return res.status(401).json({ error: { message: 'No token provided' } });
     }
-
-    const token = authHeader.substring(7);
     const decoded = jwt.verify(token, jwtConfig.accessSecret);
     
     // Verify user still exists

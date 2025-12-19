@@ -7,6 +7,7 @@ const { jwt: jwtConfig, lockout } = require('../config/security');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { COOKIE_NAMES, getCookieOptions, clearAuthCookies } = require('../utils/cookieConfig');
 
 const generateTokens = (userId, username, role) => {
   const accessToken = jwt.sign(
@@ -78,10 +79,12 @@ exports.register = async (req, res) => {
     await auditLog(user.id, 'REGISTER_SUCCESS', true, req, { username, email });
     logger.info(`New user registered: ${username}`);
 
+    // Set tokens as httpOnly cookies instead of returning in JSON
+    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, getCookieOptions(3 * 60 * 60 * 1000)); // 3 hours
+    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000)); // 7 days
+
     res.status(201).json({
       message: 'User registered successfully',
-      accessToken,
-      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -200,10 +203,12 @@ exports.login = async (req, res) => {
     await auditLog(user.id, 'LOGIN_SUCCESS', true, req);
     logger.info(`User ${username} logged in successfully`);
 
+    // Set tokens as httpOnly cookies instead of returning in JSON
+    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, getCookieOptions(3 * 60 * 60 * 1000)); // 3 hours
+    res.cookie(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, getCookieOptions(7 * 24 * 60 * 60 * 1000)); // 7 days
+
     res.json({
       message: 'Login successful',
-      accessToken,
-      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -219,10 +224,11 @@ exports.login = async (req, res) => {
 
 exports.refreshToken = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    // Read refresh token from httpOnly cookie instead of request body
+    const refreshToken = req.cookies[COOKIE_NAMES.REFRESH_TOKEN];
 
     if (!refreshToken) {
-      return res.status(400).json({ error: { message: 'Refresh token required' } });
+      return res.status(401).json({ error: { message: 'Refresh token required' } });
     }
 
     const decoded = jwt.verify(refreshToken, jwtConfig.refreshSecret);
@@ -246,9 +252,11 @@ exports.refreshToken = async (req, res) => {
     const { accessToken } = generateTokens(decoded.userId, decoded.username, decoded.role);
     await auditLog(decoded.userId, 'TOKEN_REFRESHED', true, req);
 
+    // Set new access token as cookie
+    res.cookie(COOKIE_NAMES.ACCESS_TOKEN, accessToken, getCookieOptions(3 * 60 * 60 * 1000));
+
     res.json({
-      message: 'Token refreshed',
-      accessToken
+      message: 'Token refreshed successfully'
     });
   } catch (err) {
     logger.error('Token refresh error:', err);
@@ -258,7 +266,8 @@ exports.refreshToken = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    // Read refresh token from httpOnly cookie instead of request body
+    const refreshToken = req.cookies[COOKIE_NAMES.REFRESH_TOKEN];
 
     if (refreshToken) {
       // Revoke refresh token (system operation)
@@ -270,6 +279,9 @@ exports.logout = async (req, res) => {
 
     await auditLog(req.user.userId, 'LOGOUT', true, req);
     logger.info(`User logged out: ${req.user.username}`);
+
+    // Clear authentication cookies
+    clearAuthCookies(res);
 
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
@@ -294,4 +306,17 @@ exports.getProfile = async (req, res) => {
     logger.error('Get profile error:', err);
     res.status(500).json({ error: { message: 'Failed to fetch profile' } });
   }
+};
+
+// Check if user is authenticated (used by frontend to verify cookie-based auth)
+exports.checkAuth = async (req, res) => {
+  // authenticate middleware already verified the token from cookie
+  res.json({
+    authenticated: true,
+    user: {
+      id: req.userInfo.id,
+      username: req.userInfo.username,
+      email: req.userInfo.email
+    }
+  });
 };

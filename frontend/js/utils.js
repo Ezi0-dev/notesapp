@@ -30,25 +30,29 @@ function hideMessage(elementId) {
   }
 }
 
-// Check if user is authenticated
-function isAuthenticated() {
-  const token = localStorage.getItem("accessToken");
-  const user = localStorage.getItem("user");
-  return !!(token && user);
+// Check if user is authenticated by calling backend
+// Can't check cookies from JS (httpOnly), so we ask the server
+async function isAuthenticated() {
+  try {
+    const response = await api.checkAuth();
+    return response.authenticated === true;
+  } catch (error) {
+    return false;
+  }
 }
 
 // Redirect to login if not authenticated
-function redirectIfNotAuthenticated() {
-  if (!isAuthenticated()) {
-    setTimeout(() => {
-      window.location.href = "/login.html";
-    }, 5000);
+async function redirectIfNotAuthenticated() {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    window.location.href = "/login.html";
   }
 }
 
 // Redirect to dashboard if already authenticated
-function redirectIfAuthenticated() {
-  if (isAuthenticated()) {
+async function redirectIfAuthenticated() {
+  const authenticated = await isAuthenticated();
+  if (authenticated) {
     window.location.href = "/dashboard.html";
   }
 }

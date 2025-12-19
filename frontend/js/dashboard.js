@@ -2,9 +2,15 @@ let notes = [];
 let sharednotes = [];
 let currentNoteId = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   // Check if user is logged in
-  redirectIfNotAuthenticated();
+  await redirectIfNotAuthenticated();
+
+  // Start auto-refresh timer
+  api.startRefreshTimer();
+
+  // Setup cross-tab auth sync
+  setupAuthSync();
 
   // Load user info and notes
   loadUserInfo();
@@ -676,16 +682,12 @@ async function logout() {
 
     // Wait for toast to show, then redirect
     setTimeout(() => {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       window.location.href = "/login.html";
     }, 1000);
   } catch (error) {
     console.error("Logout error:", error);
-    // Logout locally even if API fails
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    // Logout locally even if API fails (cookies already cleared by api.logout attempt)
     localStorage.removeItem("user");
     window.location.href = "/login.html";
   }
@@ -804,5 +806,32 @@ function initMasonry() {
     percentPosition: true,
     gutter: 24,
     transitionDuration: "0.3s",
+  });
+}
+
+// Sync authentication state across browser tabs
+function setupAuthSync() {
+  if (typeof BroadcastChannel === 'undefined') {
+    console.log('BroadcastChannel not supported, skipping cross-tab sync');
+    return;
+  }
+
+  const authChannel = new BroadcastChannel('auth-channel');
+
+  authChannel.onmessage = (event) => {
+    if (event.data.type === 'logout') {
+      // Another tab logged out - redirect this tab to login
+      localStorage.removeItem('user');
+      api.stopRefreshTimer();
+      window.location.href = '/login.html';
+    } else if (event.data.type === 'login' && event.data.user) {
+      // Another tab logged in - update user data
+      localStorage.setItem('user', JSON.stringify(event.data.user));
+    }
+  };
+
+  // Clean up channel when page unloads
+  window.addEventListener('beforeunload', () => {
+    authChannel.close();
   });
 }

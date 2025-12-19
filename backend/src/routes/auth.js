@@ -36,12 +36,6 @@ const loginValidation = [
     .withMessage('Password is required')
 ];
 
-const refreshTokenValidation = [
-  body('refreshToken')
-    .notEmpty()
-    .withMessage('Refresh token is required')
-];
-
 const changePasswordValidation = [
   body('currentPassword')
     .notEmpty()
@@ -56,9 +50,10 @@ const changePasswordValidation = [
 // Routes
 router.post('/register', authLimiter, registerValidation, authController.register);
 router.post('/login', authLimiter, loginValidation, authController.login);
-router.post('/refresh', authLimiter, refreshTokenValidation, authController.refreshToken);
+router.post('/refresh', authLimiter, authController.refreshToken); // No body validation - token comes from cookie
 router.post('/logout', authenticate, authController.logout);
 router.get('/profile', authenticate, authController.getProfile);
+router.get('/me', authenticate, authController.checkAuth); // Check authentication status
 
 // Profile management routes
 const profileController = require('../controllers/profileController');

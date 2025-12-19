@@ -1,6 +1,9 @@
 // ==================== Initialization ====================
-document.addEventListener("DOMContentLoaded", () => {
-  redirectIfNotAuthenticated();
+document.addEventListener("DOMContentLoaded", async () => {
+  await redirectIfNotAuthenticated();
+
+  // Start auto-refresh timer
+  api.startRefreshTimer();
 
   initializeSearchPage();
   setupSearchListeners();

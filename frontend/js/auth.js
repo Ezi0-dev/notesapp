@@ -1,8 +1,12 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Force re-login for existing users - clear any old localStorage tokens
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+
   // Redirect if already logged in (for login/register pages)
-  if (window.location.pathname.includes('login.html') || 
+  if (window.location.pathname.includes('login.html') ||
       window.location.pathname.includes('register.html')) {
-    redirectIfAuthenticated();
+    await redirectIfAuthenticated();
   }
 
   // Register form
@@ -38,11 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         const data = await api.register(username, email, password);
-        
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+
+        // Only store user data in localStorage (tokens are in httpOnly cookies)
         localStorage.setItem('user', JSON.stringify(data.user));
-        
+
         showSuccess('successMessage', 'Registration successful! Redirecting...');
         setTimeout(() => {
           window.location.href = '/dashboard.html';
@@ -73,11 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         // Call api.login with username instead of email
         const data = await api.login(username, password);
-        
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+
+        // Only store user data in localStorage (tokens are in httpOnly cookies)
         localStorage.setItem('user', JSON.stringify(data.user));
-        
+
         showSuccess('successMessage', 'Login successful! Redirecting...');
         setTimeout(() => {
           window.location.href = '/dashboard.html';

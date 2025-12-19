@@ -2,21 +2,20 @@
 // This allows Docker network isolation while still working in browser
 const API_URL = "/api";
 
+// Auto-refresh config - refresh 10min before 3h expiry
+const TOKEN_REFRESH_INTERVAL = 170 * 60 * 1000; // 2h 50min
+let refreshTimer = null;
+
 const api = {
   async request(endpoint, options = {}) {
-    const token = localStorage.getItem("accessToken");
-
     const config = {
       ...options,
+      credentials: 'include', // Send cookies with every request
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
       },
     };
-
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
-    }
 
     try {
       const response = await fetch(`${API_URL}${endpoint}`, config);
@@ -31,9 +30,16 @@ const api = {
         });
 
         if (response.status === 401) {
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
+          // Token expired or invalid - clear user data and logout
           localStorage.removeItem("user");
+          this.stopRefreshTimer();
+
+          // Broadcast logout to other tabs
+          if (typeof BroadcastChannel !== 'undefined') {
+            const authChannel = new BroadcastChannel('auth-channel');
+            authChannel.postMessage({ type: 'logout' });
+            authChannel.close();
+          }
 
           // Only redirect if NOT already on auth pages
           const currentPage = window.location.pathname;
@@ -41,9 +47,7 @@ const api = {
             !currentPage.includes("login") &&
             !currentPage.includes("register")
           ) {
-            setTimeout(() => {
-              window.location.href = "/login.html";
-            }, 5000);
+            window.location.href = "/login.html";
           }
         }
 
@@ -56,27 +60,100 @@ const api = {
     }
   },
 
+  // Token refresh management
+  startRefreshTimer() {
+    this.stopRefreshTimer(); // Clear any existing timer
+
+    refreshTimer = setInterval(async () => {
+      try {
+        await this.refreshToken();
+        console.log('Token auto-refreshed successfully');
+      } catch (error) {
+        console.error('Auto-refresh failed:', error);
+        // Don't logout immediately - might be temporary network issue
+        // Next 401 will trigger logout
+      }
+    }, TOKEN_REFRESH_INTERVAL);
+
+    console.log('Auto-refresh timer started (will refresh in 2h 50min)');
+  },
+
+  stopRefreshTimer() {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+      console.log('Auto-refresh timer stopped');
+    }
+  },
+
+  async refreshToken() {
+    return this.request("/auth/refresh", {
+      method: "POST"
+    });
+  },
+
+  async checkAuth() {
+    return this.request("/auth/me");
+  },
+
   // Auth endpoints
   async register(username, email, password) {
-    return this.request("/auth/register", {
+    const response = await this.request("/auth/register", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
     });
+
+    // Start auto-refresh timer after successful registration
+    this.startRefreshTimer();
+
+    // Broadcast login to other tabs
+    if (typeof BroadcastChannel !== 'undefined') {
+      const authChannel = new BroadcastChannel('auth-channel');
+      authChannel.postMessage({ type: 'login', user: response.user });
+      authChannel.close();
+    }
+
+    return response;
   },
 
   async login(username, password) {
-    return this.request("/auth/login", {
+    const response = await this.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
+
+    // Start auto-refresh timer after successful login
+    this.startRefreshTimer();
+
+    // Broadcast login to other tabs
+    if (typeof BroadcastChannel !== 'undefined') {
+      const authChannel = new BroadcastChannel('auth-channel');
+      authChannel.postMessage({ type: 'login', user: response.user });
+      authChannel.close();
+    }
+
+    return response;
   },
 
   async logout() {
-    const refreshToken = localStorage.getItem("refreshToken");
-    return this.request("/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken }),
+    // Stop refresh timer
+    this.stopRefreshTimer();
+
+    const response = await this.request("/auth/logout", {
+      method: "POST"
     });
+
+    // Clear user from localStorage (cookies cleared by server)
+    localStorage.removeItem("user");
+
+    // Broadcast logout to other tabs
+    if (typeof BroadcastChannel !== 'undefined') {
+      const authChannel = new BroadcastChannel('auth-channel');
+      authChannel.postMessage({ type: 'logout' });
+      authChannel.close();
+    }
+
+    return response;
   },
 
   async getProfile() {
@@ -101,15 +178,12 @@ const api = {
     const formData = new FormData();
     formData.append("avatar", file);
 
-    const token = localStorage.getItem("accessToken");
-
     try {
       const response = await fetch(`${API_URL}/auth/upload-avatar`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include', // Send cookies for authentication
         body: formData,
+        // Don't set Content-Type - browser sets it automatically with boundary for FormData
       });
 
       const data = await response.json();

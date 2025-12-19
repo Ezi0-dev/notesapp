@@ -1,7 +1,10 @@
 // frontend/js/profile.js
 
-document.addEventListener("DOMContentLoaded", () => {
-  redirectIfNotAuthenticated();
+document.addEventListener("DOMContentLoaded", async () => {
+  await redirectIfNotAuthenticated();
+
+  // Start auto-refresh timer
+  api.startRefreshTimer();
 
   loadUserProfile();
   setupNavigationListeners();
@@ -247,8 +250,6 @@ function setupPasswordChangeListener() {
 
       // Only logout and redirect on success
       await api.logout();
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
 
       setTimeout(() => {
