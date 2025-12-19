@@ -166,9 +166,7 @@ function displayNotes(notesToDisplay) {
   container.innerHTML = notesToDisplay
     .map(
       (note) => `
-    <div class="note-card" data-id="${note.id}" onclick="viewNote('${
-        note.id
-      }')">
+    <div class="note-card" data-note-id="${note.id}" data-is-shared="${note.isShared || false}">
       <div class="note-header">
         <h3 class="note-title">${escapeHtml(note.title)}</h3>
         <div class="note-badges">
@@ -197,27 +195,21 @@ function displayNotes(notesToDisplay) {
       <div class="note-meta">
         <span class="note-date">${formatDate(note.updated_at)}</span>
       </div>
-      <div class="note-actions" onclick="event.stopPropagation()">
-        <button class="btn-icon" onclick="editNote('${
-          note.id
-        }')" title="Edit Note">✏️</button>
+      <div class="note-actions">
+        <button class="btn-icon btn-edit" data-note-id="${note.id}" title="Edit Note">✏️</button>
         ${
           !note.isShared
             ? `
-          <button class="btn-icon" onclick="shareNote('${
-            note.id
-          }')" title="Share Note">👥</button>
+          <button class="btn-icon btn-share" data-note-id="${note.id}" title="Share Note">👥</button>
           ${
             note.share_count > 0
-              ? `<button class="btn-icon" onclick="manageShares('${note.id}')" title="Manage Shares">⚙️</button>`
+              ? `<button class="btn-icon btn-manage-shares" data-note-id="${note.id}" title="Manage Shares">⚙️</button>`
               : ""
           }
-          <button class="btn-icon btn-delete" onclick="deleteNote('${
-            note.id
-          }')" title="Delete Note">🗑️</button>
+          <button class="btn-icon btn-delete" data-note-id="${note.id}" title="Delete Note">🗑️</button>
           `
             : `
-          <button class="btn-icon" onclick="leaveNote('${note.id}')" title="Leave Note">👋</button>
+          <button class="btn-icon btn-leave" data-note-id="${note.id}" title="Leave Note">👋</button>
         `
         }
       </div>
@@ -226,10 +218,56 @@ function displayNotes(notesToDisplay) {
     )
     .join("");
 
+  // Set up event delegation for note interactions
+  setupNoteCardListeners();
+
   // Initialize Masonry after rendering
   setTimeout(() => {
     initMasonry();
   }, 100);
+}
+
+// Set up event delegation for all note card interactions
+function setupNoteCardListeners() {
+  const container = document.getElementById("notesContainer");
+
+  // Remove any existing listener to prevent duplicates
+  const newContainer = container.cloneNode(true);
+  container.parentNode.replaceChild(newContainer, container);
+
+  // Add single event listener to container (event delegation)
+  newContainer.addEventListener("click", (e) => {
+    const target = e.target.closest("button, .note-card");
+
+    if (!target) return;
+
+    // Handle button clicks
+    if (target.classList.contains("btn-edit")) {
+      e.stopPropagation();
+      const noteId = target.dataset.noteId;
+      editNote(noteId);
+    } else if (target.classList.contains("btn-share")) {
+      e.stopPropagation();
+      const noteId = target.dataset.noteId;
+      shareNote(noteId);
+    } else if (target.classList.contains("btn-manage-shares")) {
+      e.stopPropagation();
+      const noteId = target.dataset.noteId;
+      manageShares(noteId);
+    } else if (target.classList.contains("btn-delete")) {
+      e.stopPropagation();
+      const noteId = target.dataset.noteId;
+      deleteNote(noteId);
+    } else if (target.classList.contains("btn-leave")) {
+      e.stopPropagation();
+      const noteId = target.dataset.noteId;
+      leaveNote(noteId);
+    } else if (target.classList.contains("note-card") && !e.target.closest(".note-actions")) {
+      // Click on card itself (not on action buttons)
+      const noteId = target.dataset.noteId;
+      viewNote(noteId);
+    }
+  });
 }
 
 // Debounce function
@@ -541,12 +579,15 @@ window.manageShares = async function (noteId) {
         </div>
         <div class="share-item-actions">
           <button class="btn btn-secondary btn-change-permission"
-                  onclick="toggleSharePermission('${noteId}', '${share.shared_with_id}', '${share.permission}')"
+                  data-note-id="${noteId}"
+                  data-shared-with-id="${share.shared_with_id}"
+                  data-permission="${share.permission}"
                   title="Change permission">
             ${share.permission === "read" ? "⬆️ Upgrade" : "⬇️ Downgrade"}
           </button>
           <button class="btn btn-danger btn-unshare"
-                  onclick="unshareNote('${noteId}', '${share.shared_with_id}')"
+                  data-note-id="${noteId}"
+                  data-shared-with-id="${share.shared_with_id}"
                   title="Remove access">
             🗑️ Unshare
           </button>
@@ -555,6 +596,9 @@ window.manageShares = async function (noteId) {
     `
       )
       .join("");
+
+    // Set up event delegation for share actions
+    setupShareActionsListeners();
 
     document.getElementById("manageSharesModal").style.display = "flex";
   } catch (error) {
@@ -565,6 +609,33 @@ window.manageShares = async function (noteId) {
 
 function closeManageSharesModal() {
   document.getElementById("manageSharesModal").style.display = "none";
+}
+
+// Set up event delegation for share management actions
+function setupShareActionsListeners() {
+  const sharesList = document.getElementById("sharesList");
+
+  // Remove any existing listener to prevent duplicates
+  const newSharesList = sharesList.cloneNode(true);
+  sharesList.parentNode.replaceChild(newSharesList, sharesList);
+
+  // Add event listener to shares list (event delegation)
+  newSharesList.addEventListener("click", (e) => {
+    const button = e.target.closest("button");
+
+    if (!button) return;
+
+    if (button.classList.contains("btn-change-permission")) {
+      const noteId = button.dataset.noteId;
+      const sharedWithId = button.dataset.sharedWithId;
+      const currentPermission = button.dataset.permission;
+      toggleSharePermission(noteId, sharedWithId, currentPermission);
+    } else if (button.classList.contains("btn-unshare")) {
+      const noteId = button.dataset.noteId;
+      const sharedWithId = button.dataset.sharedWithId;
+      unshareNote(noteId, sharedWithId);
+    }
+  });
 }
 
 window.toggleSharePermission = async function (
