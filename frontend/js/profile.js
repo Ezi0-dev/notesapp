@@ -1,5 +1,78 @@
 // frontend/js/profile.js
 
+// Validate file by checking magic bytes (file signature)
+async function validateImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const bytes = new Uint8Array(e.target.result);
+
+      // Check magic bytes for common image formats
+      const signatures = {
+        'image/jpeg': [
+          [0xFF, 0xD8, 0xFF, 0xE0], // JPEG JFIF
+          [0xFF, 0xD8, 0xFF, 0xE1], // JPEG EXIF
+          [0xFF, 0xD8, 0xFF, 0xE2], // JPEG still
+          [0xFF, 0xD8, 0xFF, 0xDB]  // JPEG raw
+        ],
+        'image/png': [
+          [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        ],
+        'image/gif': [
+          [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // GIF87a
+          [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]  // GIF89a
+        ],
+        'image/webp': [
+          [0x52, 0x49, 0x46, 0x46] // RIFF (WebP container)
+        ]
+      };
+
+      // Check if file matches any valid signature
+      let isValid = false;
+      let detectedType = null;
+
+      for (const [mimeType, sigs] of Object.entries(signatures)) {
+        for (const sig of sigs) {
+          const matches = sig.every((byte, index) => bytes[index] === byte);
+          if (matches) {
+            isValid = true;
+            detectedType = mimeType;
+            break;
+          }
+        }
+        if (isValid) break;
+      }
+
+      // Extra check for WebP - verify WebP signature after RIFF
+      if (detectedType === 'image/webp') {
+        const webpSig = [0x57, 0x45, 0x42, 0x50]; // "WEBP"
+        const webpMatch = webpSig.every((byte, index) => bytes[index + 8] === byte);
+        if (!webpMatch) {
+          isValid = false;
+          detectedType = null;
+        }
+      }
+
+      if (!isValid) {
+        reject(new Error('File is not a valid image format'));
+      } else {
+        // Verify the detected type matches the declared MIME type
+        if (file.type && file.type !== detectedType) {
+          reject(new Error(`File signature mismatch: expected ${file.type}, got ${detectedType}`));
+        } else {
+          resolve(detectedType);
+        }
+      }
+    };
+
+    reader.onerror = () => reject(new Error('Failed to read file'));
+
+    // Read first 12 bytes to check signature
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await redirectIfNotAuthenticated();
 
@@ -104,10 +177,11 @@ function setupProfilePictureListeners() {
         title: "File Too Large",
         message: "Please choose an image under 2MB",
       });
+      e.target.value = ''; // Clear the input
       return;
     }
 
-    // Validate file type
+    // Validate file type (basic MIME check)
     if (!file.type.startsWith("image/")) {
       showToast({
         icon: "✗",
@@ -115,11 +189,27 @@ function setupProfilePictureListeners() {
         title: "Invalid File",
         message: "Please choose an image file",
       });
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
+    // Validate actual file content by checking magic bytes
+    // This prevents users from uploading disguised files (e.g., .exe renamed to .jpg)
+    try {
+      await validateImageFile(file);
+    } catch (error) {
+      showToast({
+        icon: "✗",
+        type: "error",
+        title: "Invalid Image File",
+        message: error.message || "File content doesn't match a valid image format",
+      });
+      e.target.value = ''; // Clear the input
       return;
     }
 
     try {
-      // Upload to server first
+      // Upload to server (backend performs additional validation)
       console.log("Uploading profile picture...");
       const data = await api.uploadProfilePicture(file);
       console.log("Upload response:", data);
@@ -146,6 +236,7 @@ function setupProfilePictureListeners() {
         title: "Upload Failed",
         message: error.message || "Failed to upload profile picture",
       });
+      e.target.value = ''; // Clear the input on upload failure
     }
   });
 
