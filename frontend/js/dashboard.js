@@ -74,7 +74,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadUserInfo() {
   try {
     // Get user from localStorage first for immediate display
-    const storedUser = JSON.parse(localStorage.getItem("user"));
+    let storedUser = null;
+    try {
+      const userJson = localStorage.getItem("user");
+      if (userJson) {
+        storedUser = JSON.parse(userJson);
+      }
+    } catch (parseError) {
+      // localStorage data is corrupted, clear it and continue
+      console.warn("Corrupted user data in localStorage, clearing:", parseError);
+      localStorage.removeItem("user");
+    }
+
     if (storedUser) {
       document.getElementById("dashboardUsername").textContent = storedUser.username;
 
