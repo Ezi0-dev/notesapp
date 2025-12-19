@@ -164,6 +164,27 @@ function getRelativeTime(dateString) {
   return "just now";
 }
 
+// Format date as absolute (e.g., "Jan 15, 2024")
+function formatAbsoluteDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// Button loading state helpers
+function setButtonLoading(button, text) {
+  button.disabled = true;
+  button.textContent = text;
+}
+
+function resetButton(button, text) {
+  button.disabled = false;
+  button.textContent = text;
+}
+
 // Truncate text
 function truncate(text, maxLength) {
   if (text.length <= maxLength) return text;
