@@ -102,31 +102,68 @@ exports.changePassword = async (req, res) => {
 };
 
 exports.deleteAccount = async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const userId = req.user.userId;
+    logger.info(`Account deletion initiated for user: ${userId}`);
 
-    // Log the deletion attempt
-    await auditLog(userId, 'ACCOUNT_DELETION_INITIATED', true, req);
+    // Start transaction
+    await client.query('BEGIN');
 
-    // Delete user (CASCADE will delete notes, refresh_tokens, and audit_logs)
-    const result = await pool.query(
-      'DELETE FROM users WHERE id = $1 RETURNING username, email',
-      [userId]
-    );
+    try {
+      // Get user info before deletion for logging
+      const userResult = await client.query(
+        'SELECT username, email FROM users WHERE id = $1',
+        [userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: { message: 'User not found' } });
+      if (userResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        logger.warn(`User not found for deletion: ${userId}`);
+        return res.status(404).json({ error: { message: 'User not found' } });
+      }
+
+      const user = userResult.rows[0];
+      logger.info(`Deleting account: ${user.username} (${user.email})`);
+
+      // Log the deletion attempt (audit log has ON DELETE SET NULL, so it will persist)
+      await auditLog(userId, 'ACCOUNT_DELETION_INITIATED', true, req);
+
+      // Delete user (CASCADE will delete notes, refresh_tokens, friendships, notifications, etc.)
+      const deleteResult = await client.query(
+        'DELETE FROM users WHERE id = $1',
+        [userId]
+      );
+
+      if (deleteResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        logger.error(`Failed to delete user: ${userId}`);
+        return res.status(500).json({ error: { message: 'Failed to delete user from database' } });
+      }
+
+      // Commit transaction
+      await client.query('COMMIT');
+      logger.warn(`Account successfully deleted: ${user.username} (${user.email})`);
+
+      res.json({
+        message: 'Account successfully deleted'
+      });
+    } catch (txError) {
+      await client.query('ROLLBACK');
+      logger.error('Transaction error during account deletion:', txError);
+      throw txError;
     }
-
-    const deletedUser = result.rows[0];
-    logger.warn(`Account deleted: ${deletedUser.username} (${deletedUser.email})`);
-
-    res.json({
-      message: 'Account successfully deleted'
-    });
   } catch (err) {
     logger.error('Delete account error:', err);
-    res.status(500).json({ error: { message: 'Failed to delete account' } });
+    res.status(500).json({
+      error: {
+        message: 'Failed to delete account',
+        details: err.message
+      }
+    });
+  } finally {
+    client.release();
   }
 };
 

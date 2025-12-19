@@ -389,10 +389,7 @@ function setupDeleteAccountListener() {
       deleteBtn.disabled = true;
       deleteBtn.textContent = "Deleting...";
 
-      // In a real app: await api.deleteAccount();
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await api.deleteAccount();
 
       showToast({
         icon: "👋",
