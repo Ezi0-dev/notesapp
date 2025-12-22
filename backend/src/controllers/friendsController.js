@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator');
 const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 const { executeAsSystem } = require('../middleware/rlsContext');
+const { emitNotification } = require('../sockets/notificationSocket');
 
 // Helper to get the correct database client (RLS-aware if available, otherwise pool)
 const getDbClient = (req) => req.dbClient || pool;
@@ -128,8 +129,8 @@ exports.sendFriendRequest = async (req, res) => {
         // Create notification for the friend using system privileges
         // RLS policy requires system context for cross-user notification inserts
         const requesterUsername = req.user.username;
-        await executeAsSystem(
-            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5)',
+        const notificationResult = await executeAsSystem(
+            'INSERT INTO notifications (user_id, type, from_user_id, related_id, message) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [
                 friendId,
                 'friend_request',
@@ -138,6 +139,19 @@ exports.sendFriendRequest = async (req, res) => {
                 `${requesterUsername} sent you a friend request`
             ]
         );
+
+        // Emit real-time notification
+        if (notificationResult.rows.length > 0) {
+            const notification = { ...notificationResult.rows[0], from_username: requesterUsername };
+            logger.debug('Emitting friend_request notification', {
+                toUserId: friendId,
+                fromUserId: userId,
+                notificationId: notification.id
+            });
+            emitNotification(friendId, notification);
+        } else {
+            logger.warn('Failed to create friend_request notification', { friendId, friendshipId: friendship.id });
+        }
 
         await auditLog(userId, 'FRIEND_REQUEST_SENT', true, req, { friendId, friendUsername });
         logger.info(`Friend request sent by user ${userId} to user ${friendId}`);
@@ -234,11 +248,24 @@ exports.acceptFriendRequest = async (req, res) => {
         // Create notification for requester that their request was accepted using system privileges
         // RLS policy requires system context for cross-user notification inserts
         const accepterUsername = req.user.username;
-        await executeAsSystem(
+        const acceptNotificationResult = await executeAsSystem(
             `INSERT INTO notifications (user_id, type, from_user_id, related_id, message)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [requesterId, 'friend_request', userId, friendshipId, `${accepterUsername} accepted your friend request!`]
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [requesterId, 'friend_accepted', userId, friendshipId, `${accepterUsername} accepted your friend request!`]
         );
+
+        // Emit real-time notification
+        if (acceptNotificationResult.rows.length > 0) {
+            const notification = { ...acceptNotificationResult.rows[0], from_username: accepterUsername };
+            logger.debug('Emitting friend_accepted notification', {
+                toUserId: requesterId,
+                fromUserId: userId,
+                notificationId: notification.id
+            });
+            emitNotification(requesterId, notification);
+        } else {
+            logger.warn('Failed to create friend_accepted notification', { requesterId, friendshipId });
+        }
 
         await auditLog(userId, 'FRIEND_REQUEST_ACCEPTED', true, req, { friendshipId });
         logger.info(`Friend request ${friendshipId} accepted by user ${userId}`);

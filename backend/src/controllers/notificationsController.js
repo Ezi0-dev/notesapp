@@ -1,5 +1,10 @@
 const { pool } = require('../config/database');
 const { logger } = require('../utils/logger');
+const {
+  emitNotificationRead,
+  emitNotificationDeleted,
+  emitAllNotificationsRead
+} = require('../sockets/notificationSocket');
 
 // Helper to get the correct database client (RLS-aware if available, otherwise pool)
 const getDbClient = (req) => req.dbClient || pool;
@@ -58,6 +63,10 @@ exports.markAsRead = async (req, res) => {
     }
 
     logger.info(`Notification ${id} marked as read by user ${userId}`);
+
+    // Emit real-time update
+    emitNotificationRead(userId, id);
+
     res.json({ message: 'Notification marked as read' });
   } catch (error) {
     logger.error('Mark notification read error:', error);
@@ -78,6 +87,10 @@ exports.markAllAsRead = async (req, res) => {
     );
 
     logger.info(`All notifications marked as read for user ${userId}`);
+
+    // Emit real-time update
+    emitAllNotificationsRead(userId);
+
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
     logger.error('Mark all notifications read error:', error);
@@ -105,6 +118,10 @@ exports.deleteNotification = async (req, res) => {
     }
 
     logger.info(`Notification ${id} deleted by user ${userId}`);
+
+    // Emit real-time update
+    emitNotificationDeleted(userId, id);
+
     res.json({ message: 'Notification deleted' });
   } catch (error) {
     logger.error('Delete notification error:', error);

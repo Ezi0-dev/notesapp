@@ -5,12 +5,53 @@ import {
   getUserAvatarUrl,
   showToast
 } from './utils.js';
-import {
-  initProfileModal,
-  openProfileModal,
-  setFriendsList,
-  getFriendsList
-} from './profileModal.js';
+
+// ==================== Profile Modal Dynamic Loading ====================
+// Track if profile modal module is loaded
+let profileModalModule = null;
+let profileModalLoading = null;
+let currentFriendsList = []; // Store friends list locally
+
+// Dynamically load profile modal module
+async function loadProfileModal() {
+  // Return existing promise if already loading
+  if (profileModalLoading) {
+    return profileModalLoading;
+  }
+
+  // Return immediately if already loaded
+  if (profileModalModule) {
+    return Promise.resolve(profileModalModule);
+  }
+
+  // Load module
+  profileModalLoading = import('./profileModal.js')
+    .then(module => {
+      console.log('✓ Profile modal module loaded');
+      profileModalModule = module;
+
+      // Initialize modal with callbacks
+      module.initProfileModal({
+        onFriendsUpdate: async () => {
+          await loadFriends();
+          // Refresh search results if any
+          const searchInput = document.getElementById("searchInput");
+          if (searchInput && searchInput.value.trim().length >= 2) {
+            await performSearch();
+          }
+        }
+      });
+
+      return module;
+    })
+    .catch(error => {
+      console.error('Failed to load profile modal:', error);
+      profileModalLoading = null; // Reset so we can retry
+      throw error;
+    });
+
+  return profileModalLoading;
+}
 
 // ==================== Initialization ====================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -19,17 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Start auto-refresh timer
   api.startRefreshTimer();
 
-  // Initialize shared profile modal module
-  initProfileModal({
-    onFriendsUpdate: async () => {
-      await loadFriends();
-      // Refresh search results if any
-      const searchInput = document.getElementById("searchInput");
-      if (searchInput && searchInput.value.trim().length >= 2) {
-        await performSearch();
-      }
-    }
-  });
+  // Profile modal will be loaded dynamically when needed
 
   initializeSearchPage();
   setupSearchListeners();
@@ -162,7 +193,7 @@ function createUserCard(user) {
   const userCard = document.createElement("div");
   userCard.className = "user-card";
 
-  const isFriend = getFriendsList().some((friend) => friend.friend_id === user.id);
+  const isFriend = currentFriendsList.some((friend) => friend.friend_id === user.id);
 
   userCard.innerHTML = `
         <img src="${getUserAvatarUrl(user.profile_picture, user.username)}" alt="${escapeHtml(
@@ -184,11 +215,28 @@ function createUserCard(user) {
 
 function attachProfileButtonListeners() {
   document.querySelectorAll(".btn-view-profile").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const userId = btn.dataset.userId;
       const username = btn.dataset.username;
       const profilePicture = btn.dataset.profilePicture;
-      openProfileModal(userId, username, profilePicture);
+
+      try {
+        // Load profile modal module if not already loaded
+        const modal = await loadProfileModal();
+
+        // Sync current friends list to modal
+        modal.setFriendsList(currentFriendsList);
+
+        // Open the profile modal
+        modal.openProfileModal(userId, username, profilePicture);
+      } catch (error) {
+        showToast({
+          icon: "✗",
+          type: "error",
+          title: "Error",
+          message: "Failed to load profile viewer"
+        });
+      }
     });
   });
 }
@@ -201,8 +249,14 @@ function attachProfileButtonListeners() {
 async function loadFriends() {
   try {
     const response = await api.getFriends();
-    // Update shared module state
-    setFriendsList(response.friends);
+
+    // Update local state
+    currentFriendsList = response.friends;
+
+    // Update profileModal state if it's loaded
+    if (profileModalModule) {
+      profileModalModule.setFriendsList(currentFriendsList);
+    }
   } catch (error) {
     console.error("Error loading friends:", error);
     showToast({

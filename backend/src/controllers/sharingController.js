@@ -5,6 +5,7 @@ const { logger } = require('../utils/logger');
 const { auditLog } = require('../middleware/security');
 const { executeAsSystem } = require('../middleware/rlsContext');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { emitNotification } = require('../sockets/notificationSocket');
 
 // Helper to get the correct database client (RLS-aware if available, otherwise pool)
 const getDbClient = (req) => req.dbClient || pool;

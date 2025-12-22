@@ -4,6 +4,7 @@ require('dotenv').config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -22,8 +23,11 @@ const adminRoutes = require('./routes/admin');
 const { pool } = require('./config/database');
 const scheduler = require('./jobs/scheduler');
 const { setRLSContext } = require('./middleware/rlsContext');
+const { initializeSocketServer } = require('./sockets/socketServer');
+const { setSocketInstance } = require('./sockets/notificationSocket');
 
 const app = express();
+const httpServer = http.createServer(app);  // Wrap Express in HTTP server
 const PORT = process.env.PORT || 5000;
 
 // Trust proxy (for rate limiting behind nginx)
@@ -35,9 +39,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://cdn.socket.io"],  // Allow Socket.io CDN
       imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "ws://localhost:5000", "wss://localhost:5000"],  // Allow WebSocket
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
@@ -88,6 +92,10 @@ app.use('/uploads', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static('uploads'));
+
+// Initialize Socket.io (after all middleware, before routes)
+const io = initializeSocketServer(httpServer);
+setSocketInstance(io);  // Make available to controllers
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -164,7 +172,7 @@ process.on('SIGINT', () => {
 
 // Only start server if this file is run directly (not imported as a module)
 if (require.main === module) {
-  server = app.listen(PORT, '0.0.0.0', async () => {
+  server = httpServer.listen(PORT, '0.0.0.0', async () => {
     logger.info(`🚀 Server running on port ${PORT}`);
     logger.info(`🔒 Security features enabled`);
 

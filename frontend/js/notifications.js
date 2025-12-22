@@ -1,10 +1,22 @@
 import api from './api.js';
 import { escapeHtml, getRelativeTime, getUserAvatarUrl, showToast } from './utils.js';
 
+// ==================== State Management ====================
+// NOTE: These must be declared BEFORE initNotifications() runs
+let notificationsPollingInterval = null;
+let currentNotifications = [];
+
+// WebSocket state management
+let socket = null;
+let isSocketConnected = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
 // ==================== Initialization ====================
-document.addEventListener("DOMContentLoaded", async () => {
-  // Start auto-refresh timer
-  api.startRefreshTimer();
+// Export initialization function for dynamic imports
+export function initNotifications() {
+  // Note: api.startRefreshTimer() is already called in dashboard.js
+  // so we don't call it here to avoid duplicate timers
 
   initializeNotifications();
   setupNotificationListeners();
@@ -12,11 +24,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start polling for new notifications
   startNotificationsPolling();
-});
+}
 
-// ==================== State Management ====================
-let notificationsPollingInterval = null;
-let currentNotifications = [];
+// Auto-initialize if loaded traditionally (non-dynamic import)
+// OR when loaded dynamically after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener("DOMContentLoaded", initNotifications);
+} else {
+  // DOM already loaded (dynamic import case)
+  initNotifications();
+}
 
 // ==================== Page Initialization ====================
 async function initializeNotifications() {
@@ -89,7 +106,6 @@ async function loadNotifications() {
   try {
     const response = await api.getNotifications();
     currentNotifications = response.data || [];
-    //console.log(currentNotifications);
 
     displayNotifications(currentNotifications);
     updateNotificationBadge(currentNotifications);
@@ -232,13 +248,124 @@ function closeDropdown() {
 
 // ==================== Polling Functions ====================
 function startNotificationsPolling() {
-  // Poll every 5 minutes
+  // Try WebSocket first, fallback to polling if unavailable
+  if (typeof io !== 'undefined') {
+    initializeWebSocket();
+  } else {
+    console.warn('Socket.io not available, using polling fallback');
+    startPollingFallback();
+  }
+}
+
+function initializeWebSocket() {
+  try {
+    // Connect to WebSocket server through nginx proxy (same origin)
+    // This ensures cookies are sent (no cross-origin issues)
+    socket = io({
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS
+    });
+
+    // Connection established
+    socket.on('connect', () => {
+      isSocketConnected = true;
+      reconnectAttempts = 0;
+
+      // Load notifications on initial connection
+      loadNotifications();
+    });
+
+    // New notification received
+    socket.on('notification:new', (notification) => {
+      // Add to current notifications array
+      currentNotifications.unshift(notification);
+
+      // Update UI
+      displayNotifications(currentNotifications);
+      updateNotificationBadge(currentNotifications);
+    });
+
+    // Notification marked as read
+    socket.on('notification:read', ({ id }) => {
+      const notification = currentNotifications.find(n => n.id === id);
+      if (notification) {
+        notification.is_read = true;
+        displayNotifications(currentNotifications);
+        updateNotificationBadge(currentNotifications);
+      }
+    });
+
+    // Notification deleted
+    socket.on('notification:deleted', ({ id }) => {
+      currentNotifications = currentNotifications.filter(n => n.id !== id);
+      displayNotifications(currentNotifications);
+      updateNotificationBadge(currentNotifications);
+    });
+
+    // All notifications marked as read
+    socket.on('notification:all_read', () => {
+      currentNotifications.forEach(n => n.is_read = true);
+      displayNotifications(currentNotifications);
+      updateNotificationBadge(currentNotifications);
+    });
+
+    // Connection error
+    socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error.message);
+      reconnectAttempts++;
+
+      // Fall back to polling after max reconnect attempts
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.warn('WebSocket reconnection failed, falling back to polling');
+        socket.disconnect();
+        startPollingFallback();
+      }
+    });
+
+    // Disconnected
+    socket.on('disconnect', (reason) => {
+      isSocketConnected = false;
+
+      // If server initiated disconnect, fall back to polling
+      if (reason === 'io server disconnect') {
+        startPollingFallback();
+      }
+    });
+
+    // Reconnected successfully
+    socket.on('reconnect', (attemptNumber) => {
+      isSocketConnected = true;
+      reconnectAttempts = 0;
+
+      // Re-fetch notifications to sync state
+      loadNotifications();
+    });
+
+  } catch (error) {
+    console.error('Failed to initialize WebSocket:', error);
+    startPollingFallback();
+  }
+}
+
+// Polling fallback (original implementation)
+function startPollingFallback() {
   notificationsPollingInterval = setInterval(() => {
     loadNotifications();
   }, 60000 * 5);
 }
 
 function stopNotificationsPolling() {
+  // Disconnect WebSocket if active
+  if (socket && isSocketConnected) {
+    socket.disconnect();
+    socket = null;
+    isSocketConnected = false;
+  }
+
+  // Clear polling interval if active
   if (notificationsPollingInterval) {
     clearInterval(notificationsPollingInterval);
     notificationsPollingInterval = null;

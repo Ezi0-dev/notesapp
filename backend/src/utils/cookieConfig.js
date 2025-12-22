@@ -15,7 +15,7 @@ const getCookieOptions = (maxAge) => {
   return {
     httpOnly: true, // Can't be accessed by JavaScript (XSS protection)
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-    sameSite: 'strict', // CSRF protection
+    sameSite: 'lax', // CSRF protection (allows top-level navigation, better browser compatibility)
     path: '/', // Available for all routes
     maxAge: maxAge // Lifetime in milliseconds
   };

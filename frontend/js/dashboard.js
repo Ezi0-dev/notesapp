@@ -14,6 +14,73 @@ let notes = [];
 let sharednotes = [];
 let currentNoteId = null;
 
+// ==================== Masonry Dynamic Loading ====================
+// Track if Masonry library is loaded
+let masonryLoaded = false;
+let masonryLoadingPromise = null;
+
+// Load Masonry library from CDN only when needed
+async function loadMasonryLibrary() {
+  // Return existing promise if already loading
+  if (masonryLoadingPromise) {
+    return masonryLoadingPromise;
+  }
+
+  // Return immediately if already loaded
+  if (masonryLoaded && typeof Masonry !== 'undefined') {
+    return Promise.resolve();
+  }
+
+  // Create loading promise
+  masonryLoadingPromise = new Promise((resolve, reject) => {
+    // Check if already loaded by another instance
+    if (typeof Masonry !== 'undefined') {
+      masonryLoaded = true;
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js';
+    script.integrity = 'sha256-Nn1q/fx0H7SNLZMQ5Hw5JLaTRZp0yILA/FRexe19VdI=';
+    script.crossOrigin = 'anonymous';
+    script.async = true;
+
+    script.onload = () => {
+      console.log('✓ Masonry library loaded');
+      masonryLoaded = true;
+      resolve();
+    };
+
+    script.onerror = (error) => {
+      console.error('Failed to load Masonry library:', error);
+      masonryLoadingPromise = null; // Reset so we can retry
+      reject(new Error('Failed to load Masonry library'));
+    };
+
+    document.head.appendChild(script);
+  });
+
+  return masonryLoadingPromise;
+}
+
+// ==================== Notifications Dynamic Loading ====================
+// Lazy load notifications functionality
+async function loadNotificationsModule() {
+  try {
+    // Dynamic import of notifications module
+    const notificationsModule = await import('./notifications.js');
+
+    console.log('✓ Notifications module loaded');
+
+    // The module will self-initialize via its auto-init logic
+    // since DOM is already ready when this runs
+  } catch (error) {
+    console.error('Failed to load notifications module:', error);
+    // Dashboard still works without notifications
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   // Check if user is logged in
   await redirectIfNotAuthenticated();
@@ -80,6 +147,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
+
+  // Dynamically load notifications module
+  // This is non-critical for initial render, so load after dashboard setup
+  loadNotificationsModule();
 });
 
 // Load user information from localStorage and fetch latest profile data
@@ -849,20 +920,30 @@ async function viewNote(id) {
 // Masonry initialization
 let masonryInstance = null;
 
-function initMasonry() {
+async function initMasonry() {
   const container = document.getElementById("notesContainer");
 
-  if (masonryInstance) {
-    masonryInstance.destroy();
-  }
+  // Load Masonry library if not already loaded
+  try {
+    await loadMasonryLibrary();
 
-  masonryInstance = new Masonry(container, {
-    itemSelector: ".note-card",
-    columnWidth: ".note-card",
-    percentPosition: true,
-    gutter: 24,
-    transitionDuration: "0.3s",
-  });
+    // Destroy existing instance if present
+    if (masonryInstance) {
+      masonryInstance.destroy();
+    }
+
+    // Initialize Masonry
+    masonryInstance = new Masonry(container, {
+      itemSelector: ".note-card",
+      columnWidth: ".note-card",
+      percentPosition: true,
+      gutter: 24,
+      transitionDuration: "0.3s",
+    });
+  } catch (error) {
+    console.error('Failed to initialize Masonry:', error);
+    // Notes will still display in regular CSS grid layout
+  }
 }
 
 // Sync authentication state across browser tabs
