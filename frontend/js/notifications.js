@@ -1,5 +1,5 @@
 import api from './api.js';
-import { escapeHtml, getRelativeTime, getUserAvatarUrl, showToast } from './utils.js';
+import { escapeHtml, getRelativeTime, getUserAvatarUrl, showToast, handleError, ErrorSeverity } from './utils.js';
 
 // ==================== State Management ====================
 // NOTE: These must be declared BEFORE initNotifications() runs
@@ -110,7 +110,12 @@ async function loadNotifications() {
     displayNotifications(currentNotifications);
     updateNotificationBadge(currentNotifications);
   } catch (error) {
-    console.error("Failed to load notifications:", error);
+    handleError(error, {
+      severity: ErrorSeverity.WARNING,
+      title: 'Notifications Load Failed',
+      context: 'Failed to load notifications',
+      showUser: false // Don't show toast for background polling failures
+    });
   }
 }
 

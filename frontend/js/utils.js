@@ -315,3 +315,82 @@ export function showToast(options) {
     toast.classList.remove("show");
   }, options.duration || 3000);
 }
+
+// Centralized error handling with severity levels
+export const ErrorSeverity = {
+  INFO: 'info',
+  WARNING: 'warning',
+  ERROR: 'error',
+  CRITICAL: 'critical'
+};
+
+export function handleError(error, options = {}) {
+  const {
+    severity = ErrorSeverity.ERROR,
+    title,
+    context = '',
+    showUser = true,
+    logToConsole = true
+  } = options;
+
+  // Extract error message
+  const errorMessage = error?.message || error || 'An unexpected error occurred';
+
+  // Log to console based on severity
+  if (logToConsole) {
+    const logMessage = context ? `${context}: ${errorMessage}` : errorMessage;
+
+    switch (severity) {
+      case ErrorSeverity.INFO:
+        console.info(logMessage, error);
+        break;
+      case ErrorSeverity.WARNING:
+        console.warn(logMessage, error);
+        break;
+      case ErrorSeverity.ERROR:
+        console.error(logMessage, error);
+        break;
+      case ErrorSeverity.CRITICAL:
+        console.error(`[CRITICAL] ${logMessage}`, error);
+        break;
+    }
+  }
+
+  // Show user-friendly notification
+  if (showUser) {
+    const toastConfig = {
+      message: errorMessage,
+      duration: 4000
+    };
+
+    switch (severity) {
+      case ErrorSeverity.INFO:
+        toastConfig.icon = 'ℹ️';
+        toastConfig.title = title || 'Info';
+        toastConfig.type = 'info';
+        break;
+      case ErrorSeverity.WARNING:
+        toastConfig.icon = '⚠️';
+        toastConfig.title = title || 'Warning';
+        toastConfig.type = 'warning';
+        toastConfig.duration = 5000;
+        break;
+      case ErrorSeverity.ERROR:
+        toastConfig.icon = '❌';
+        toastConfig.title = title || 'Error';
+        toastConfig.type = 'error';
+        toastConfig.duration = 5000;
+        break;
+      case ErrorSeverity.CRITICAL:
+        toastConfig.icon = '🚨';
+        toastConfig.title = title || 'Critical Error';
+        toastConfig.type = 'error';
+        toastConfig.duration = 7000;
+        break;
+    }
+
+    showToast(toastConfig);
+  }
+
+  return errorMessage;
+}

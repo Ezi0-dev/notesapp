@@ -3,7 +3,7 @@
 // This prevents ~300 lines of code duplication
 
 import api from './api.js';
-import { getUserAvatarUrl, setButtonLoading, resetButton, showToast } from './utils.js';
+import { getUserAvatarUrl, setButtonLoading, resetButton, showToast, handleError, ErrorSeverity } from './utils.js';
 
 // Module state
 let currentSelectedUser = null;
@@ -190,8 +190,13 @@ async function checkPendingRequest(userId) {
       showAddFriendButton();
     }
   } catch (error) {
-    console.error("Error checking friend requests:", error);
-    showAddFriendButton();
+    handleError(error, {
+      severity: ErrorSeverity.WARNING,
+      title: 'Friend Status Check Failed',
+      context: 'Failed to check pending friend requests',
+      showUser: false // Fail gracefully without showing toast
+    });
+    showAddFriendButton(); // Fallback to showing add friend button
   }
 }
 

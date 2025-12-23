@@ -6,6 +6,42 @@ const API_URL = "/api";
 const TOKEN_REFRESH_INTERVAL = 170 * 60 * 1000; // 2h 50min
 let refreshTimer = null;
 
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 10000, // 10 seconds
+  // Status codes that should trigger a retry
+  retryableStatusCodes: [408, 429, 500, 502, 503, 504],
+};
+
+// Helper function to check if an error is retryable
+function isRetryableError(error, response) {
+  // Network errors (no response)
+  if (!response && error.name === 'TypeError') {
+    return true;
+  }
+
+  // Server errors that might be transient
+  if (response && RETRY_CONFIG.retryableStatusCodes.includes(response.status)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Calculate delay with exponential backoff and jitter
+function getRetryDelay(attempt) {
+  const exponentialDelay = RETRY_CONFIG.baseDelay * Math.pow(2, attempt);
+  const jitter = Math.random() * 500; // Random 0-500ms jitter
+  return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelay);
+}
+
+// Sleep helper for retry delays
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const api = {
   async request(endpoint, options = {}) {
     const config = {
@@ -17,47 +53,89 @@ const api = {
       },
     };
 
-    try {
-      const response = await fetch(`${API_URL}${endpoint}`, config);
-      const data = await response.json();
+    // Determine if this request should be retried
+    const method = (config.method || 'GET').toUpperCase();
+    const shouldRetry = options.retry !== false && (method === 'GET' || options.retry === true);
+    const maxAttempts = shouldRetry ? RETRY_CONFIG.maxRetries + 1 : 1;
 
-      if (!response.ok) {
-        console.error("API request failed:", {
-          endpoint: `${API_URL}${endpoint}`,
-          status: response.status,
-          statusText: response.statusText,
-          data,
-        });
+    let lastError;
+    let lastResponse;
 
-        if (response.status === 401) {
-          // Token expired or invalid - clear user data and logout
-          localStorage.removeItem("user");
-          this.stopRefreshTimer();
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`${API_URL}${endpoint}`, config);
+        const data = await response.json();
 
-          // Broadcast logout to other tabs
-          if (typeof BroadcastChannel !== 'undefined') {
-            const authChannel = new BroadcastChannel('auth-channel');
-            authChannel.postMessage({ type: 'logout' });
-            authChannel.close();
+        lastResponse = response;
+
+        if (!response.ok) {
+          console.error("API request failed:", {
+            endpoint: `${API_URL}${endpoint}`,
+            status: response.status,
+            statusText: response.statusText,
+            data,
+            attempt: attempt + 1,
+            maxAttempts
+          });
+
+          if (response.status === 401) {
+            // Token expired or invalid - clear user data and logout
+            localStorage.removeItem("user");
+            this.stopRefreshTimer();
+
+            // Broadcast logout to other tabs
+            if (typeof BroadcastChannel !== 'undefined') {
+              const authChannel = new BroadcastChannel('auth-channel');
+              authChannel.postMessage({ type: 'logout' });
+              authChannel.close();
+            }
+
+            // Only redirect if NOT already on auth pages
+            const currentPage = window.location.pathname;
+            if (
+              !currentPage.includes("login") &&
+              !currentPage.includes("register")
+            ) {
+              window.location.href = "/login.html";
+            }
+
+            // Don't retry 401 errors
+            throw new Error(data.error?.message || "Request failed");
           }
 
-          // Only redirect if NOT already on auth pages
-          const currentPage = window.location.pathname;
-          if (
-            !currentPage.includes("login") &&
-            !currentPage.includes("register")
-          ) {
-            window.location.href = "/login.html";
+          // Check if we should retry
+          const error = new Error(data.error?.message || "Request failed");
+          if (shouldRetry && attempt < maxAttempts - 1 && isRetryableError(error, response)) {
+            const delay = getRetryDelay(attempt);
+            console.warn(`Retrying request in ${delay}ms (attempt ${attempt + 2}/${maxAttempts})`);
+            await sleep(delay);
+            continue; // Retry the request
           }
+
+          throw error;
         }
 
-        throw new Error(data.error?.message || "Request failed");
-      }
+        // Request succeeded
+        return data;
 
-      return data;
-    } catch (error) {
-      throw error;
+      } catch (error) {
+        lastError = error;
+
+        // Check if we should retry on network error
+        if (shouldRetry && attempt < maxAttempts - 1 && isRetryableError(error, null)) {
+          const delay = getRetryDelay(attempt);
+          console.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 2}/${maxAttempts}):`, error.message);
+          await sleep(delay);
+          continue; // Retry the request
+        }
+
+        // All retries exhausted or non-retryable error
+        throw error;
+      }
     }
+
+    // If we get here, all retries failed
+    throw lastError || new Error('Request failed after retries');
   },
 
   // Token refresh management

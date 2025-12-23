@@ -7,7 +7,9 @@ import {
   getRelativeTime,
   showError,
   showToast,
-  showConfirm
+  showConfirm,
+  handleError,
+  ErrorSeverity
 } from './utils.js';
 
 let notes = [];
@@ -801,7 +803,11 @@ async function leaveNote(noteId) {
 
     loadNotes();
   } catch (error) {
-    console.error("Leave note error:", error);
+    handleError(error, {
+      severity: ErrorSeverity.ERROR,
+      title: 'Leave Note Failed',
+      context: 'Failed to leave shared note'
+    });
   }
 }
 
@@ -834,10 +840,19 @@ async function logout() {
       window.location.href = "/login.html";
     }, 1000);
   } catch (error) {
-    console.error("Logout error:", error);
-    // Logout locally even if API fails (cookies already cleared by api.logout attempt)
-    localStorage.removeItem("user");
-    window.location.href = "/login.html";
+    // Show warning that server logout failed, but still clear local data
+    handleError(error, {
+      severity: ErrorSeverity.WARNING,
+      title: 'Logout Warning',
+      context: 'Server logout failed',
+    });
+
+    // Clear local data and redirect even if server logout failed
+    // This ensures the user is logged out locally
+    setTimeout(() => {
+      localStorage.removeItem("user");
+      window.location.href = "/login.html";
+    }, 1500);
   }
 }
 
