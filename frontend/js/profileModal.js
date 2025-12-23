@@ -3,7 +3,7 @@
 // This prevents ~300 lines of code duplication
 
 import api from './api.js';
-import { getUserAvatarUrl, setButtonLoading, resetButton, showToast, handleError, ErrorSeverity } from './utils.js';
+import { getUserAvatarUrl, setButtonLoading, resetButton, showToast, handleError, ErrorSeverity, createFocusTrap } from './utils.js';
 
 // Module state
 let currentSelectedUser = null;
@@ -16,6 +16,7 @@ let modalClickOutsideHandler = null;
 let closeButtonHandler = null;
 let addFriendHandler = null;
 let removeFriendHandler = null;
+let profileModalFocusTrap = null; // Focus trap for accessibility
 
 // ==================== Module Configuration ====================
 function initProfileModal(config = {}) {
@@ -132,6 +133,26 @@ async function openProfileModal(userId, username, profilePicture = null, created
 
   // Show modal
   profileModal.style.display = "block";
+
+  // Focus on first available button and activate focus trap for keyboard accessibility
+  setTimeout(() => {
+    const addBtn = document.getElementById("addFriendBtn");
+    const removeBtn = document.getElementById("removeFriendBtn");
+    const acceptBtn = document.getElementById("acceptRequestBtn");
+    const cancelBtn = document.getElementById("cancelRequestBtn");
+
+    // Focus on the first visible button
+    const firstVisibleButton = [addBtn, removeBtn, acceptBtn, cancelBtn].find(
+      btn => btn && btn.style.display !== "none"
+    );
+
+    if (firstVisibleButton) {
+      firstVisibleButton.focus();
+    }
+
+    // Activate focus trap
+    profileModalFocusTrap = createFocusTrap(profileModal);
+  }, 100);
 }
 
 function resetModalState() {
@@ -154,6 +175,12 @@ function closeProfileModal() {
   const profileModal = document.getElementById("profileModal");
   profileModal.style.display = "none";
   currentSelectedUser = null;
+
+  // Cleanup focus trap
+  if (profileModalFocusTrap) {
+    profileModalFocusTrap();
+    profileModalFocusTrap = null;
+  }
 }
 
 async function updateFriendshipStatus(userId) {

@@ -174,7 +174,8 @@ function createNotificationElement(notification) {
           ? `
         <button class="btn-notification-action btn-notification-mark-read"
                 data-notification-id="${notification.id}"
-                title="Mark as read">
+                title="Mark as read"
+                aria-label="Mark notification as read">
           👁️
         </button>
       `
@@ -182,7 +183,8 @@ function createNotificationElement(notification) {
       }
       <button class="btn-notification-action btn-delete btn-notification-delete"
               data-notification-id="${notification.id}"
-              title="Delete">
+              title="Delete"
+              aria-label="Delete notification">
         🗑️
       </button>
     </div>

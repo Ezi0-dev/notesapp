@@ -9,12 +9,18 @@ import {
   showToast,
   showConfirm,
   handleError,
-  ErrorSeverity
+  ErrorSeverity,
+  createFocusTrap
 } from './utils.js';
 
 let notes = [];
 let sharednotes = [];
 let currentNoteId = null;
+
+// Focus trap cleanup functions for accessibility
+let noteModalFocusTrap = null;
+let shareModalFocusTrap = null;
+let manageSharesModalFocusTrap = null;
 
 // ==================== Masonry Dynamic Loading ====================
 // Track if Masonry library is loaded
@@ -292,20 +298,20 @@ function displayNotes(notesToDisplay) {
         <span class="note-date">${getRelativeTime(note.updated_at)}</span>
       </div>
       <div class="note-actions">
-        <button class="btn-icon btn-edit" data-note-id="${note.id}" title="Edit Note">✏️</button>
+        <button class="btn-icon btn-edit" data-note-id="${note.id}" title="Edit Note" aria-label="Edit Note">✏️</button>
         ${
           !note.isShared
             ? `
-          <button class="btn-icon btn-share" data-note-id="${note.id}" title="Share Note">👥</button>
+          <button class="btn-icon btn-share" data-note-id="${note.id}" title="Share Note" aria-label="Share Note">👥</button>
           ${
             note.share_count > 0
-              ? `<button class="btn-icon btn-manage-shares" data-note-id="${note.id}" title="Manage Shares">⚙️</button>`
+              ? `<button class="btn-icon btn-manage-shares" data-note-id="${note.id}" title="Manage Shares" aria-label="Manage Shares">⚙️</button>`
               : ""
           }
-          <button class="btn-icon btn-delete" data-note-id="${note.id}" title="Delete Note">🗑️</button>
+          <button class="btn-icon btn-delete" data-note-id="${note.id}" title="Delete Note" aria-label="Delete Note">🗑️</button>
           `
             : `
-          <button class="btn-icon btn-leave" data-note-id="${note.id}" title="Leave Note">👋</button>
+          <button class="btn-icon btn-leave" data-note-id="${note.id}" title="Leave Note" aria-label="Leave Shared Note">👋</button>
         `
         }
       </div>
@@ -400,9 +406,10 @@ function openNewNoteModal() {
 
   setModalMode("new");
 
-  // Focus on title input
+  // Focus on title input and activate focus trap for keyboard accessibility
   setTimeout(() => {
     document.getElementById("noteTitle").focus();
+    noteModalFocusTrap = createFocusTrap(document.getElementById("noteModal"));
   }, 100);
 }
 
@@ -580,6 +587,12 @@ async function shareNote(noteId) {
 
     // Show modal
     document.getElementById("shareModal").style.display = "flex";
+
+    // Focus on friend select dropdown and activate focus trap for keyboard accessibility
+    setTimeout(() => {
+      document.getElementById("shareFriendSelect").focus();
+      shareModalFocusTrap = createFocusTrap(document.getElementById("shareModal"));
+    }, 100);
   } catch (error) {
     showError("noteError", "Failed to load friends: " + error.message);
   }
@@ -632,6 +645,12 @@ async function confirmShare() {
 function closeShareModal() {
   document.getElementById("shareModal").style.display = "none";
   currentNoteId = null;
+
+  // Cleanup focus trap
+  if (shareModalFocusTrap) {
+    shareModalFocusTrap();
+    shareModalFocusTrap = null;
+  }
 }
 
 async function manageShares(noteId) {
@@ -671,7 +690,8 @@ async function manageShares(noteId) {
           <button class="btn btn-danger btn-unshare"
                   data-note-id="${noteId}"
                   data-shared-with-id="${share.shared_with_id}"
-                  title="Remove access">
+                  title="Remove access"
+                  aria-label="Unshare note and remove access">
             🗑️ Unshare
           </button>
         </div>
@@ -684,6 +704,15 @@ async function manageShares(noteId) {
     setupShareActionsListeners();
 
     document.getElementById("manageSharesModal").style.display = "flex";
+
+    // Focus on first button and activate focus trap for keyboard accessibility
+    setTimeout(() => {
+      const firstButton = document.querySelector("#manageSharesModal .btn-change-permission");
+      if (firstButton) {
+        firstButton.focus();
+      }
+      manageSharesModalFocusTrap = createFocusTrap(document.getElementById("manageSharesModal"));
+    }, 100);
   } catch (error) {
     showError("manageSharesError", "Failed to load shares: " + error.message);
     console.error("Manage shares error:", error);
@@ -692,6 +721,12 @@ async function manageShares(noteId) {
 
 function closeManageSharesModal() {
   document.getElementById("manageSharesModal").style.display = "none";
+
+  // Cleanup focus trap
+  if (manageSharesModalFocusTrap) {
+    manageSharesModalFocusTrap();
+    manageSharesModalFocusTrap = null;
+  }
 }
 
 // Set up event delegation for share management actions
@@ -778,6 +813,12 @@ function closeModal() {
   document.getElementById("noteModal").style.display = "none";
   document.getElementById("noteError").style.display = "none";
   currentNoteId = null;
+
+  // Cleanup focus trap
+  if (noteModalFocusTrap) {
+    noteModalFocusTrap();
+    noteModalFocusTrap = null;
+  }
 }
 
 async function leaveNote(noteId) {

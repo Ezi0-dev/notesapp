@@ -394,3 +394,57 @@ export function handleError(error, options = {}) {
 
   return errorMessage;
 }
+
+// ==================== Focus Management ====================
+
+/**
+ * Creates a focus trap within a modal element
+ * Prevents Tab from leaving the modal and loops back to the beginning
+ *
+ * @param {HTMLElement} modalElement - The modal container element
+ * @returns {Function} Cleanup function to remove the focus trap
+ */
+export function createFocusTrap(modalElement) {
+  // Find all focusable elements in the modal
+  const focusableSelectors = [
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    'a[href]',
+    '[tabindex]:not([tabindex="-1"])'
+  ].join(', ');
+
+  function handleTabKey(e) {
+    // Only handle Tab key
+    if (e.key !== 'Tab') return;
+
+    // Get current focusable elements (recalculate each time in case DOM changed)
+    const focusableElements = Array.from(modalElement.querySelectorAll(focusableSelectors))
+      .filter(el => el.offsetParent !== null); // Filter out hidden elements
+
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    // Shift+Tab on first element -> go to last
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    }
+    // Tab on last element -> go to first
+    else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
+    }
+  }
+
+  // Add event listener
+  modalElement.addEventListener('keydown', handleTabKey);
+
+  // Return cleanup function
+  return () => {
+    modalElement.removeEventListener('keydown', handleTabKey);
+  };
+}
