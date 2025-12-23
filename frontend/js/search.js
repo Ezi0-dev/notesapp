@@ -65,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializeSearchPage();
   setupSearchListeners();
   setupNavigationListeners();
+  setupCleanupHandlers();
 });
 
 // ==================== Page Initialization ====================
@@ -110,6 +111,22 @@ function setupNavigationListeners() {
       logout();
     });
   }
+}
+
+function setupCleanupHandlers() {
+  // Clear search timeout and clean up modal listeners on page unload to prevent memory leaks
+  window.addEventListener("beforeunload", () => {
+    // Clear search timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+      searchTimeout = null;
+    }
+
+    // Clean up profile modal listeners
+    if (profileModalModule) {
+      profileModalModule.cleanupProfileModal();
+    }
+  });
 }
 
 // ==================== State Management ====================
@@ -205,7 +222,7 @@ function createUserCard(user) {
         </div>
         <button class="btn-view-profile" data-user-id="${
           user.id
-        }" data-username="${user.username}" data-profile-picture="${user.profile_picture || ''}">
+        }" data-username="${user.username}" data-profile-picture="${user.profile_picture || ''}" data-created-at="${user.created_at || ''}">
             View Profile
         </button>
     `;
@@ -219,6 +236,7 @@ function attachProfileButtonListeners() {
       const userId = btn.dataset.userId;
       const username = btn.dataset.username;
       const profilePicture = btn.dataset.profilePicture;
+      const createdAt = btn.dataset.createdAt;
 
       try {
         // Load profile modal module if not already loaded
@@ -228,7 +246,7 @@ function attachProfileButtonListeners() {
         modal.setFriendsList(currentFriendsList);
 
         // Open the profile modal
-        modal.openProfileModal(userId, username, profilePicture);
+        modal.openProfileModal(userId, username, profilePicture, createdAt);
       } catch (error) {
         showToast({
           icon: "✗",

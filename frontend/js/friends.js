@@ -4,7 +4,9 @@ import {
   escapeHtml,
   getUserAvatarUrl,
   formatAbsoluteDate,
-  showToast
+  showToast,
+  setButtonLoading,
+  resetButton
 } from './utils.js';
 
 // ==================== Profile Modal Dynamic Loading ====================
@@ -59,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializeFriendsPage();
   setupFriendsListeners();
   setupNavigationListeners();
+  setupCleanupHandlers();
 });
 
 // ==================== Page Initialization ====================
@@ -100,6 +103,15 @@ function setupNavigationListeners() {
       logout();
     });
   }
+}
+
+function setupCleanupHandlers() {
+  // Clean up profile modal listeners on page unload to prevent memory leaks
+  window.addEventListener("beforeunload", async () => {
+    if (profileModalModule) {
+      profileModalModule.cleanupProfileModal();
+    }
+  });
 }
 
 // ==================== State Management ====================
@@ -170,7 +182,7 @@ function createFriendItem(friend) {
         <div class="friend-actions">
             <button class="btn-view-profile btn btn-primary" data-user-id="${
               friend.friend_id
-            }" data-username="${friend.username}" data-profile-picture="${friend.profile_picture || ''}">
+            }" data-username="${friend.username}" data-profile-picture="${friend.profile_picture || ''}" data-created-at="${friend.created_at || ''}">
                 View Profile
             </button>
             <button class="btn-remove-friend btn btn-danger" data-user-id="${
@@ -262,7 +274,7 @@ function attachRequestActionListeners() {
   document.querySelectorAll(".btn-accept-request").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const requestId = btn.dataset.requestId; // keep as string
-      await handleAcceptRequest(requestId);
+      await handleAcceptRequest(requestId, btn);
     });
   });
 
@@ -270,7 +282,7 @@ function attachRequestActionListeners() {
   document.querySelectorAll(".btn-decline-request").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const requestId = btn.dataset.requestId;
-      await handleDeclineRequest(requestId);
+      await handleDeclineRequest(requestId, btn);
     });
   });
 
@@ -289,6 +301,7 @@ function attachRequestActionListeners() {
       const userId = btn.dataset.userId;
       const username = btn.dataset.username;
       const profilePicture = btn.dataset.profilePicture;
+      const createdAt = btn.dataset.createdAt;
 
       try {
         // Load profile modal module if not already loaded
@@ -298,7 +311,7 @@ function attachRequestActionListeners() {
         modal.setFriendsList(currentFriendsList);
 
         // Open the profile modal
-        modal.openProfileModal(userId, username, profilePicture);
+        modal.openProfileModal(userId, username, profilePicture, createdAt);
       } catch (error) {
         showToast({
           icon: "✗",
@@ -311,9 +324,12 @@ function attachRequestActionListeners() {
   });
 }
 
-async function handleAcceptRequest(requestId) {
+async function handleAcceptRequest(requestId, button) {
   try {
     if (!requestId) throw new Error("Invalid request ID");
+
+    // Show loading state
+    setButtonLoading(button, "Accepting...");
 
     await api.acceptFriendRequest(requestId);
     showToast({
@@ -333,11 +349,15 @@ async function handleAcceptRequest(requestId) {
       title: "Accept Failed",
       message: "Failed to accept friend request"
     });
+    resetButton(button, "Accept");
   }
 }
 
-async function handleDeclineRequest(requestId) {
+async function handleDeclineRequest(requestId, button) {
   try {
+    // Show loading state
+    setButtonLoading(button, "Declining...");
+
     await api.declineFriendRequest(requestId);
     showToast({
       icon: "✓",
@@ -356,6 +376,7 @@ async function handleDeclineRequest(requestId) {
       title: "Decline Failed",
       message: "Failed to decline friend request"
     });
+    resetButton(button, "Decline");
   }
 }
 

@@ -349,6 +349,7 @@ exports.getFriends = async (req, res) => {
                 END as friend_id,
                 u.username,
                 u.profile_picture,
+                u.created_at,
                 f.accepted_at
              FROM friendships f
              JOIN users u ON (
@@ -452,7 +453,7 @@ exports.searchUsers = async (req, res) => {
         const { username } = req.query;
 
         const result = await getDbClient(req).query(
-            `SELECT id, username, profile_picture
+            `SELECT id, username, profile_picture, created_at
              FROM users
              WHERE username ILIKE $1 AND id != $2
              LIMIT 10`,

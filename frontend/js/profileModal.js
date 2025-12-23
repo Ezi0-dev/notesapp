@@ -11,11 +11,20 @@ let friendsList = [];
 let onFriendsUpdate = null;  // Callback for when friends list changes
 let onRequestsUpdate = null; // Callback for when friend requests change
 
+// Store listener references for cleanup
+let modalClickOutsideHandler = null;
+let closeButtonHandler = null;
+let addFriendHandler = null;
+let removeFriendHandler = null;
+
 // ==================== Module Configuration ====================
 function initProfileModal(config = {}) {
   // Set up callbacks from parent page
   onFriendsUpdate = config.onFriendsUpdate || null;
   onRequestsUpdate = config.onRequestsUpdate || null;
+
+  // Clean up existing listeners before adding new ones
+  cleanupProfileModal();
 
   // Set up modal listeners
   const closeModal = document.querySelector(".close");
@@ -23,25 +32,62 @@ function initProfileModal(config = {}) {
   const addFriendBtn = document.getElementById("addFriendBtn");
   const removeFriendBtn = document.getElementById("removeFriendBtn");
 
+  // Store listener references
+  closeButtonHandler = closeProfileModal;
+  modalClickOutsideHandler = (e) => {
+    if (e.target === profileModal) {
+      closeProfileModal();
+    }
+  };
+  addFriendHandler = handleAddFriend;
+  removeFriendHandler = handleRemoveFriend;
+
+  // Add listeners
   if (closeModal) {
-    closeModal.addEventListener("click", closeProfileModal);
+    closeModal.addEventListener("click", closeButtonHandler);
   }
 
   if (profileModal) {
-    window.addEventListener("click", (e) => {
-      if (e.target === profileModal) {
-        closeProfileModal();
-      }
-    });
+    window.addEventListener("click", modalClickOutsideHandler);
   }
 
   if (addFriendBtn) {
-    addFriendBtn.addEventListener("click", handleAddFriend);
+    addFriendBtn.addEventListener("click", addFriendHandler);
   }
 
   if (removeFriendBtn) {
-    removeFriendBtn.addEventListener("click", handleRemoveFriend);
+    removeFriendBtn.addEventListener("click", removeFriendHandler);
   }
+}
+
+// Clean up event listeners
+function cleanupProfileModal() {
+  const closeModal = document.querySelector(".close");
+  const addFriendBtn = document.getElementById("addFriendBtn");
+  const removeFriendBtn = document.getElementById("removeFriendBtn");
+
+  // Remove existing listeners if they exist
+  if (closeModal && closeButtonHandler) {
+    closeModal.removeEventListener("click", closeButtonHandler);
+  }
+
+  if (modalClickOutsideHandler) {
+    window.removeEventListener("click", modalClickOutsideHandler);
+  }
+
+  if (addFriendBtn && addFriendHandler) {
+    addFriendBtn.removeEventListener("click", addFriendHandler);
+  }
+
+  if (removeFriendBtn && removeFriendHandler) {
+    removeFriendBtn.removeEventListener("click", removeFriendHandler);
+  }
+
+  // Reset handler references
+  modalClickOutsideHandler = null;
+  closeButtonHandler = null;
+  addFriendHandler = null;
+  removeFriendHandler = null;
 }
 
 // ==================== State Management ====================
@@ -54,7 +100,7 @@ function getFriendsList() {
 }
 
 // ==================== Profile Modal Functions ====================
-async function openProfileModal(userId, username, profilePicture = null) {
+async function openProfileModal(userId, username, profilePicture = null, createdAt = null) {
   const profileModal = document.getElementById("profileModal");
   const profilePictureEl = document.getElementById("profilePicture");
   const profileUsername = document.getElementById("profileUsername");
@@ -69,7 +115,17 @@ async function openProfileModal(userId, username, profilePicture = null) {
   const pictureToUse = profilePicture || friendsList.find(f => f.friend_id === userId)?.profile_picture;
   profilePictureEl.src = getUserAvatarUrl(pictureToUse, username);
   profileUsername.textContent = username;
-  profileMemberSince.textContent = "Member since 2025";
+
+  // Get created_at from parameter or friends list
+  const memberDate = createdAt || friendsList.find(f => f.friend_id === userId)?.created_at;
+
+  if (memberDate) {
+    const date = new Date(memberDate);
+    const year = date.getFullYear();
+    profileMemberSince.textContent = `Member since ${year}`;
+  } else {
+    profileMemberSince.textContent = "Member";
+  }
 
   // Check and update friendship status
   await updateFriendshipStatus(userId);
@@ -249,4 +305,4 @@ async function handleRemoveFriend() {
 }
 
 // Export public API
-export { initProfileModal, openProfileModal, closeProfileModal, setFriendsList, getFriendsList };
+export { initProfileModal, openProfileModal, closeProfileModal, setFriendsList, getFriendsList, cleanupProfileModal };
