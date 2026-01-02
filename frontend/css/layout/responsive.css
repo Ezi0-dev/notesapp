@@ -5,9 +5,14 @@
 /* Large Screens (Desktop) */
 @media (min-width: 1025px) {
   .btn-logout,
-  .btn-friends,
-  .btn-notifications {
+  .btn-friends {
     width: 7rem;
+    height: 4rem;
+    padding: 1.115rem;
+  }
+
+  .btn-notifications {
+    width: 4rem;
     height: 4rem;
     padding: 1.115rem;
   }

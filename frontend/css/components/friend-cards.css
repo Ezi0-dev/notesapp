@@ -136,7 +136,7 @@
 
 .friend-item:hover .friend-avatar,
 .request-item:hover .request-avatar {
-  transform: scale(1.15) rotate(5deg);
+  transform: scale(1.20);
   box-shadow: 0 6px 20px rgba(91, 82, 255, 0.5);
 }
 
